@@ -1,0 +1,318 @@
+ Reingenierı́a del Sistema de Tutorı́as UCN
+
+        Asignatura:      Proyecto de Desarrollo Ágil
+        Estudiantes:     Victor Jopia, Diego Contreras
+         Institución:   Universidad Católica del Norte (UCN) - Sede Coquimbo
+
+
+
+
+1.   Contexto de la Plataforma y Problemática Actual
+
+El actual sistema de gestión de tutorı́as, utilizado por todos los departamentos de la UCN
+sede Coquimbo, presenta fallas estructurales y de seguridad que imposibilitan una simple
+refactorización, haciendo estrictamente necesario un desarrollo desde cero (Greenfield).
+
+Impacto actual del problema:
+Las vulnerabilidades y problemas más crı́ticos que afectan la gestión diaria son:
+     Ausencia de Autenticación: La plataforma carece de un sistema de registro e
+     inicio de sesión. El acceso se realiza mediante una URL pública, exponiendo el
+     sistema a cualquier usuario externo.
+     Falta de Autorización: No existe jerarquı́a ni roles de usuario. Cualquier individuo
+     con acceso al enlace puede visualizar, modificar o eliminar los horarios de cualquier
+     tutor sin dejar registro de la acción, comprometiendo la integridad total de los datos.
+     Deficiencias de Interfaz y Experiencia (UI/UX): El sistema presenta fallas
+     visuales que entorpecen la navegación, generando fricción en la gestión diaria por
+     parte de los tutores y coordinadores.
+     Falta de medio de comunicación oficial: Actualmente se utiliza WhatsApp o
+     correo de forma manual para comunicados oficiales, generando desorden y pérdida
+     de información.
+
+
+
+
+                                             1
+2.   Justificación y Propuesta de Valor
+
+El desarrollo de este proyecto se justifica por el alto nivel de riesgo e inseguridad de
+los datos en la plataforma actual, sumado a la carga operativa manual que sufren los
+coordinadores para evitar topes de horario.
+El valor esperado de nuestra solución es entregar a la UCN un sistema seguro, centrali-
+zado y automatizado. La propuesta de valor radica en reducir a cero las superposiciones de
+salas mediante validación en tiempo real, proteger la integridad de la información restrin-
+giendo el acceso exclusivamente a correos institucionales, y agilizar la comunicación oficial
+a través de notificaciones automáticas por correo. Esto optimizará significativamente la
+carga administrativa y garantizará la confiabilidad de la gestión de tutorı́as.
+
+
+
+3.   Problemas a Automatizar
+
+Para optimizar la carga operativa y mitigar los riesgos de seguridad, el nuevo sistema
+automatizará los siguientes flujos:
+      Validación de Identidad Institucional: Automatizar el filtro de acceso permi-
+      tiendo el ingreso exclusivo a cuentas con dominio institucional (@alumnos.ucn.cl
+      o @ucn.cl).
+      Prevención de Conflictos de Horario: El sistema evaluará automáticamente la
+      disponibilidad de los tutores y las salas, bloqueando en tiempo real cualquier intento
+      de solapamiento de horarios.
+      Notificaciones de Alteraciones: Automatizar el disparo de alertas cada vez que
+      se asigne, modifique o cancele una sesión.
+      Toma de Asistencia Digital: Automatizar el registro de participación de los
+      estudiantes, eliminando el uso de planillas manuales y vinculando la asistencia di-
+      rectamente al bloque de horario de cada tutorı́a.
+
+
+
+4.   Usuarios Involucrados (Roles del Sistema)
+
+Para estructurar un Control de Acceso Basado en Roles (RBAC) sólido y delegar respon-
+sabilidades, el sistema contemplará dos perspectivas de uso claramente diferenciadas:
+      Administrador (Coordinador / Jefatura): Tiene control total sobre las tutorı́as
+      de su departamento. Puede gestionar el registro de tutores, asignar salas, visualizar
+      la disponibilidad global e intervenir en caso de conflictos de horario.
+      Tutor: Usuario de la plataforma encargado de dictar las sesiones. Puede definir
+      su disponibilidad, gestionar su planificación y visualizar exclusivamente su propio
+      calendario de tutorı́as.
+
+
+
+
+                                              2
+5.   Soluciones Propuestas
+
+     Implementación de Seguridad Robusta y Persistencia: Desarrollar un módu-
+     lo de autenticación segura acoplado a un Control de Acceso Basado en Roles (RBAC)
+     y una base de datos relacional consistente para separar estrictamente los privilegios.
+     Aseguramiento de Calidad (Testing Automático): Implementación de prue-
+     bas automáticas (unitarias y de integración) sobre el flujo principal del sistema
+     (creación de tutorı́as y validación de tope de horarios), dejando evidencia de su
+     ejecución.
+     Sistema de Auditorı́a y Trazabilidad: Incorporar un registro inmutable (Logs)
+     que documente el autor, la fecha y el tipo de modificación realizada.
+     Recreación Integral del Sistema: Descartar el código heredado para construir
+     una aplicación web moderna y escalable.
+
+
+
+
+                                            3
+6.   Justificación
+
+El desarrollo de un nuevo sistema de gestión de tutorı́as se justifica por la criticidad
+de las vulnerabilidades presentes en la plataforma actual. Al operar sin autenticación ni
+control de acceso, cualquier actor externo puede manipular información sensible de las
+tutorias institucionales, representando un riesgo directo para la continuidad operativa de
+los departamentos de la UCN sede Coquimbo.
+Más allá del riesgo técnico, la ausencia de trazabilidad implica que no existe forma de
+auditar quién realizó qué acción sobre el sistema, lo que imposibilita la rendición de
+cuentas ante incidentes.
+Dado que las fallas identificadas son estructurales y no subsanables mediante refactoriza-
+ción parcial, se justifica un desarrollo Greenfield que garantice una base sólida, segura y
+mantenible a largo plazo, alineada con los estándares de una institución universitaria.
+
+
+7.   Alcance Preliminar
+
+El sistema a desarrollar contempla los siguientes lı́mites:
+Incluido en el alcance:
+      Módulo de autenticación restringido a dominios institucionales (@alumnos.ucn.cl
+      y @ucn.cl).
+      Control de acceso basado en roles (RBAC) con perfiles de Administrador y Tutor.
+      Gestión completa (CRUD) de horarios de tutorı́as con validación de conflictos en
+      tiempo real.
+      Sistema de notificaciones automáticas por correo ante modificaciones o cancelacio-
+      nes.
+      Registro de auditorı́a inmutable (logs) de todas las acciones realizadas sobre los
+      horarios.
+      Despliegue en contenedores Docker para garantizar portabilidad del sistema.
+      Módulo de registro y control de asistencia digital vinculado a cada sesión de tutorı́a.
+Fuera del alcance:
+      Integración con sistemas externos de la UCN (por ejemplo, sistema académico o
+      plataformas LMS).
+      Aplicación móvil nativa; el sistema será exclusivamente web.
+      Gestión de tutorı́as de sedes distintas a Coquimbo.
+      Módulo de videollamadas o sesiones de tutorı́a en lı́nea.
+
+
+
+
+                                              4
+8.   Valor Esperado
+
+La implementación del nuevo sistema de tutorı́as generará valor concreto en tres dimen-
+siones:
+Seguridad e Integridad Institucional: Al introducir autenticación y control de acceso
+por roles, se elimina la exposición pública del sistema, protegiendo la información de
+horarios y tutores frente a manipulaciones no autorizadas.
+Eficiencia Operativa: La automatización de la detección de conflictos de horario y el dis-
+paro de notificaciones reducirá significativamente la carga administrativa de los coordina-
+dores, eliminando la necesidad de coordinación manual vı́a WhatsApp o correo. Además,
+la digitalización de la toma de asistencia eliminará la dependencia de planillas fı́sicas,
+centralizando el registro y facilitando un control ágil y en tiempo real de la participación
+estudiantil.
+Trazabilidad y Rendición de Cuentas: El registro inmutable de acciones permitirá a
+las jefaturas auditar cualquier modificación realizada en el sistema, dotando a la institu-
+ción de un mecanismo formal de control que hoy no existe.
+En conjunto, se espera que el nuevo sistema eleve el estándar de gestión académica de la
+sede, reduciendo errores operativos, mejorando la experiencia de tutores y coordinadores,
+y sentando las bases para una plataforma escalable a futuras necesidades institucionales.
+
+
+
+
+                                              5
+9.    Producto Mı́nimo Viable (MVP)
+
+Para entregar valor comprobable en el tiempo del semestre y mitigar de inmediato las vul-
+nerabilidades crı́ticas, el alcance preliminar (MVP) contemplará un flujo principal com-
+pleto enfocado en el núcleo de gestión segura:
+
+
+
+ Caracterı́stica MVP              Descripción y Alcance
+ Módulo de Acceso Seguro         Login funcional restringido exclusivamente a correos
+                                  institucionales de la UCN.
+ Gestión de Roles Básica        Diferenciación de vistas, permisos y operaciones entre
+                                  Administradores y Tutores.
+ CRUD de Horarios y Ca-           Capacidad para crear, leer, actualizar y eliminar blo-
+ lendario (Flujo Principal)       ques de tutorı́as, con validación en tiempo real para
+                                  evitar solapamiento de salas y horas.
+ Notificaciones Automáticas      Disparo de correos automáticos al registrarse una mo-
+                                  dificación o cancelación de tutorı́a, eliminando la de-
+                                  pendencia de WhatsApp.
+ Registro de Asistencia Di-       Módulo habilitado para que el Tutor marque la asis-
+ gital                            tencia de los alumnos durante o al finalizar su bloque
+                                  de tutorı́a, guardando el registro en la base de datos.
+
+
+
+
+10.    Arquitectura del Sistema
+
+Para asegurar un desarrollo ordenado, escalable y seguro, se propone una arquitectura
+Por Capas:
+      Capa de Presentación (Frontend/Cliente): Encargada exclusivamente de la
+      interfaz gráfica y experiencia de usuario (React/Next.js).
+      Capa de Lógica de Negocio (Backend): El núcleo del sistema que procesará
+      validaciones de topes de horario, emisión de notificaciones y manejo de roles.
+      Capa de Acceso a Datos: Módulo aislado interactuando con el motor de base de
+      datos relacional (PostgreSQL).
+      Capa de Infraestructura y Despliegue: Todo el sistema será paquetizado en
+      contenedores aislados mediante Docker. El sistema quedará disponible y des-
+      plegado en la máquina virtual asignada por el curso para su validación final.
+
+
+
+
+                                           6
+11.    Metodologı́a Ágil: Scrumban
+
+Para la ejecución de este proyecto, se adoptará la metodologı́a Scrumban:
+      Planificación y Revisión (Scrum): Se mantendrán iteraciones cortas con reunio-
+      nes de planificación y retrospectiva. Esto permitirá entregar incrementos funcionales
+      del software.
+      Flujo Continuo y Lı́mites WIP (Kanban): Se utilizará un tablero visual para
+      gestionar el flujo de trabajo continuo, visible para el docente y compañeros.
+      Justificación: Scrumban ofrece la flexibilidad necesaria para un desarrollo desde
+      cero, adaptando requerimientos técnicos sin la rigidez de los Sprints tradicionales.
+
+
+
+
+Desglose de Épicas (Jira)
+
+Para el seguimiento público del avance, el backlog y el registro de decisiones, puedes
+acceder a nuestro entorno de trabajo en Jira: https://zableke.atlassian.net
+A continuación, las siete épicas principales del backlog:
+
+
+
+
+ZAB-19 Arquitectura e Infraestructura Base: Configuración inicial y paquetización
+en contenedores.
+
+
+
+
+ZAB-20 Autenticación y Acceso Seguro: Login funcional restringido a dominios
+@alumnos.ucn.cl o @ucn.cl.
+
+
+
+
+ZAB-21 Control de Acceso Basado en Roles (RBAC): Jerarquı́a de vistas y pri-
+vilegios (Administrador/Tutor).
+
+
+
+
+                                              7
+ZAB-22 Gestión de Horarios y Prevención de Conflictos: CRUD de tutorı́as y
+validación de solapamientos.
+
+
+
+
+ZAB-23 Sistema de Notificaciones Automáticas: Alertas por correo para asignación
+o cancelación de sesiones.
+
+
+
+
+ZAB-24 Trazabilidad en Registros (Logs): Registro inmutable de autores y modifi-
+caciones.
+
+
+
+
+ZAB-44 Toma de Asistencia Digital: Eliminar por completo la dependencia de pla-
+nillas fı́sicas para el control de asistencia.
+
+
+
+
+                                        8
+12.    Planificación de Sprints
+
+El desarrollo iterativo se organizará en Sprints abordando una Épica por ciclo:
+      Sprint 1: Arquitectura e infraestructura base.
+      Sprint 2: Autenticación y acceso seguro.
+      Sprint 3: Control de acceso basado en roles.
+      Sprint 4: Gestión de horarios y prevención de conflictos (Prototipo 1 - Mitad de
+      Semestre).
+      Sprint 5: Toma de asistencia digital.
+      Sprint 6: Sistema de notificaciones automáticas.
+      Sprint 7: Trazabilidad de registros y estabilización (Prototipo final).
+
+
+
+13.    Entregables y Documentación Final
+
+Como evidencia del proceso de desarrollo ágil, al cierre del semestre se entregarán:
+      Sistema Desplegado: El MVP funcional disponible en la máquina virtual asigna-
+      da.
+      Repositorio de Código: Repositorio en GitHub ordenado, con historial de com-
+      mits y evidencia de pruebas automáticas ejecutadas.
+      Manual de Usuario: Guı́a para instruir a Tutores y Administradores.
+      Documentación Técnica Breve: Documento detallando la arquitectura general,
+      requerimientos e instrucciones de despliegue.
+
+
+
+14.    Proyección de Mejoras Futuras
+
+Fuera del marco de este semestre y superando el MVP, el sistema proyecta las siguientes
+mejoras:
+      Módulo de Reporterı́a Avanzada: Creación de paneles analı́ticos para visualizar
+      métricas de rendimiento y horas dictadas por departamento.
+      Integración con Sistemas UCN: Conexión mediante API con los sistemas inter-
+      nos de la universidad para sincronizar automáticamente el avance académico.
+      Automatización de Encuestas: Envı́o de feedback a los estudiantes finalizada la
+      sesión para evaluar el desempeño del tutor.
+
+
+
+
+                                              9
+
