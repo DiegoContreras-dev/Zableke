@@ -1,0 +1,26 @@
+// Prisma Schema — Sistema de Tutorías UCN (Zableke)
+// Ref: https://www.prisma.io/docs/orm/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Entidades base — definir modelos aquí según el diseño
+// ============================================================
+
+// TODO: Implementar modelos:
+// - users
+// - roles
+// - user_roles
+// - tutors
+// - rooms
+// - schedules
+// - attendances
+// - notifications
+// - audit_logs
