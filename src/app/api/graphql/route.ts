@@ -1,20 +1,34 @@
-// GraphQL API Route — Apollo Server endpoint
-// TODO: Configurar Apollo Server aquí
-// Ref: https://www.apollographql.com/docs/apollo-server/integrations/next-js
-
+import { ApolloServer } from "@apollo/server";
+import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import { NextRequest, NextResponse } from "next/server";
 
-// Placeholder — reemplazar con Apollo Server en implementación
+import { createContext } from "@/graphql/context";
+
+const typeDefs = `
+  type Query {
+    health: String!
+  }
+`;
+
+const resolvers = {
+  Query: {
+    health: () => "ok",
+  },
+};
+
+const server = new ApolloServer({ typeDefs, resolvers });
+
+const graphqlHandler = startServerAndCreateNextHandler<NextRequest>(server, {
+  context: async (req) => createContext(req),
+});
+
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    { message: "GraphQL endpoint — Apollo Server pendiente de configurar" },
-    { status: 501 }
-  );
+  return graphqlHandler(request);
 }
 
 export async function GET() {
-  return NextResponse.json(
-    { message: "GraphQL endpoint — usar POST para queries/mutations" },
-    { status: 200 }
-  );
+  return NextResponse.json({
+    message: "GraphQL endpoint operativo. Usa POST para queries/mutations.",
+    path: "/api/graphql",
+  });
 }

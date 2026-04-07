@@ -1,15 +1,21 @@
-// GraphQL Context
-// Provee acceso a Prisma client, usuario autenticado, etc. a todos los resolvers
+import type { NextRequest } from "next/server";
 
-// import { prisma } from "@/infrastructure/prisma/client";
-// import { getServerSession } from "next-auth";
+import { prisma } from "@/infrastructure/prisma/client";
 
 export interface GraphQLContext {
-  // prisma: typeof prisma;
-  // user?: { id: string; email: string; role: string };
+  prisma: typeof prisma;
+  requestId: string;
+  ip: string | null;
+  userAgent: string | null;
 }
 
-export async function createContext(): Promise<GraphQLContext> {
-  // TODO: Inyectar prisma client y sesión del usuario
-  return {};
+export async function createContext(
+  request?: Pick<NextRequest, "headers">
+): Promise<GraphQLContext> {
+  return {
+    prisma,
+    requestId: crypto.randomUUID(),
+    ip: request?.headers?.get("x-forwarded-for") ?? null,
+    userAgent: request?.headers?.get("user-agent") ?? null,
+  };
 }
