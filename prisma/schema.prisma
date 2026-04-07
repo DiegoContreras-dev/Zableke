@@ -1,0 +1,218 @@
+// Prisma Schema — Sistema de Tutorías UCN (Zableke)
+// Ref: https://www.prisma.io/docs/orm/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleCode {
+  ADMIN
+  TUTOR
+
+  @@map("role_code")
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+
+  @@map("schedule_status")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  JUSTIFIED
+
+  @@map("attendance_status")
+}
+
+enum NotificationType {
+  SCHEDULE_CREATED
+  SCHEDULE_UPDATED
+  SCHEDULE_CANCELLED
+  SCHEDULE_REMINDER
+
+  @@map("notification_type")
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+
+  @@map("notification_status")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+
+  @@map("audit_action")
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique @db.Citext
+  displayName String   @map("display_name") @db.VarChar(120)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  roles                 UserRole[]
+  tutor                 Tutor?
+  createdSchedules      Schedule[]     @relation("ScheduleCreatedBy")
+  updatedSchedules      Schedule[]     @relation("ScheduleUpdatedBy")
+  cancelledSchedules    Schedule[]     @relation("ScheduleCancelledBy")
+  markedAttendances     Attendance[]   @relation("AttendanceMarkedBy")
+  receivedNotifications Notification[] @relation("NotificationRecipient")
+  auditLogs             AuditLog[]     @relation("AuditActor")
+
+  @@map("users")
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  code      RoleCode @unique
+  name      String   @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     Int      @map("role_id")
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId], map: "idx_user_roles_role_id")
+  @@map("user_roles")
+}
+
+model Tutor {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @unique @map("user_id") @db.Uuid
+  department String?  @db.VarChar(120)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  schedules Schedule[]
+
+  @@map("tutors")
+}
+
+model Room {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(32)
+  name      String   @db.VarChar(120)
+  capacity  Int?
+  location  String?  @db.VarChar(120)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  schedules Schedule[]
+
+  @@map("rooms")
+}
+
+model Schedule {
+  id                String         @id @default(uuid()) @db.Uuid
+  tutorId           String         @map("tutor_id") @db.Uuid
+  roomId            String         @map("room_id") @db.Uuid
+  startsAt          DateTime       @map("starts_at") @db.Timestamptz(6)
+  endsAt            DateTime       @map("ends_at") @db.Timestamptz(6)
+  status            ScheduleStatus @default(SCHEDULED)
+  createdByUserId   String         @map("created_by_user_id") @db.Uuid
+  updatedByUserId   String?        @map("updated_by_user_id") @db.Uuid
+  cancelledByUserId String?        @map("cancelled_by_user_id") @db.Uuid
+  cancelReason      String?        @map("cancel_reason") @db.VarChar(280)
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tutor       Tutor          @relation(fields: [tutorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  room        Room           @relation(fields: [roomId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy   User           @relation("ScheduleCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updatedBy   User?          @relation("ScheduleUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  cancelledBy User?          @relation("ScheduleCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  attendances Attendance[]
+  notifications Notification[]
+
+  @@index([tutorId, startsAt], map: "idx_schedules_tutor_starts_at")
+  @@index([roomId, startsAt], map: "idx_schedules_room_starts_at")
+  @@index([status, startsAt], map: "idx_schedules_status_starts_at")
+  @@map("schedules")
+}
+
+model Attendance {
+  id             String           @id @default(uuid()) @db.Uuid
+  scheduleId     String           @map("schedule_id") @db.Uuid
+  studentEmail   String           @map("student_email") @db.Citext
+  studentName    String?          @map("student_name") @db.VarChar(120)
+  status         AttendanceStatus @default(PRESENT)
+  markedByUserId String           @map("marked_by_user_id") @db.Uuid
+  markedAt       DateTime         @default(now()) @map("marked_at") @db.Timestamptz(6)
+
+  schedule     Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  markedByUser User     @relation("AttendanceMarkedBy", fields: [markedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([scheduleId, studentEmail], map: "uq_attendances_schedule_student_email")
+  @@index([studentEmail], map: "idx_attendances_student_email")
+  @@map("attendances")
+}
+
+model Notification {
+  id              String             @id @default(uuid()) @db.Uuid
+  scheduleId      String             @map("schedule_id") @db.Uuid
+  recipientUserId String?            @map("recipient_user_id") @db.Uuid
+  recipientEmail  String             @map("recipient_email") @db.Citext
+  type            NotificationType
+  status          NotificationStatus @default(PENDING)
+  subject         String             @db.VarChar(160)
+  body            String
+  sentAt          DateTime?          @map("sent_at") @db.Timestamptz(6)
+  errorMessage    String?            @map("error_message")
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  schedule      Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  recipientUser User?    @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([status, createdAt], map: "idx_notifications_status_created_at")
+  @@index([recipientEmail], map: "idx_notifications_recipient_email")
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          BigInt      @id @default(autoincrement())
+  actorUserId String?     @map("actor_user_id") @db.Uuid
+  action      AuditAction
+  entityType  String      @map("entity_type") @db.VarChar(64)
+  entityId    String?     @map("entity_id") @db.VarChar(64)
+  metadata    Json?
+  ip          String?     @db.VarChar(45)
+  userAgent   String?     @map("user_agent")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actorUser User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([createdAt], map: "idx_audit_logs_created_at")
+  @@index([entityType, entityId], map: "idx_audit_logs_entity")
+  @@index([actorUserId, createdAt], map: "idx_audit_logs_actor_created_at")
+  @@map("audit_logs")
+}

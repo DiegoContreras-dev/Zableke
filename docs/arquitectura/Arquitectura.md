@@ -1,67 +1,98 @@
 # Arquitectura del Proyecto
 
-Base: arquitectura por capas + modular por dominio, pensada para crecer sin perder orden.
+Base: arquitectura por capas + modular por dominio, en un **único proyecto Next.js** con **GraphQL** (Apollo Server) como API.
 
-## Front (Next.js + React + TS)
+## Estructura del Proyecto
 
-- App/Front/app/
-- App/Front/app/(public)/
-- App/Front/app/(dashboard)/
-- App/Front/app/api/ (solo rutas necesarias del frontend)
-- App/Front/modules/
-- App/Front/modules/auth/
-- App/Front/modules/users/
-- App/Front/modules/roles/
-- App/Front/modules/schedules/
-- App/Front/modules/attendance/
-- App/Front/modules/notifications/
-- App/Front/components/ui/ (componentes reutilizables globales)
-- App/Front/components/shared/ (componentes de negocio compartidos)
-- App/Front/styles/ (tailwind, globals, tokens)
-- App/Front/lib/
-- App/Front/lib/http/ (cliente API)
-- App/Front/lib/validators/ (zod schemas)
-- App/Front/lib/utils/
+```
+zableke/
+├── app/                            # Next.js App Router
+│   ├── (public)/                   # Páginas públicas (login, landing)
+│   ├── (dashboard)/                # Páginas protegidas (panel principal)
+│   ├── api/
+│   │   └── graphql/
+│   │       └── route.ts            # Apollo Server endpoint
+│   └── layout.tsx
+│
+├── src/
+│   ├── modules/                    # Lógica de negocio (backend)
+│   │   ├── auth/                   # Autenticación (Auth.js)
+│   │   ├── users/                  # Gestión de usuarios
+│   │   ├── roles/                  # RBAC (Admin/Tutor)
+│   │   ├── schedules/              # Horarios de tutorías
+│   │   ├── attendance/             # Control de asistencia
+│   │   ├── notifications/          # Notificaciones por email
+│   │   └── audit/                  # Auditoría y logs
+│   │
+│   ├── graphql/
+│   │   ├── schema/                 # Type definitions (.graphql)
+│   │   ├── resolvers/              # Resolvers por módulo
+│   │   └── context.ts              # Auth context + Prisma client
+│   │
+│   ├── common/
+│   │   ├── guards/                 # Auth guards, RBAC checks
+│   │   ├── validators/             # Zod schemas (validación backend)
+│   │   └── utils/
+│   │
+│   ├── infrastructure/
+│   │   ├── prisma/                 # Prisma client singleton
+│   │   └── email/                  # Email service (transaccional)
+│   │
+│   └── lib/
+│       ├── apollo-client.ts        # Cliente Apollo (frontend)
+│       └── validators/             # Zod schemas compartidos
+│
+├── components/
+│   ├── ui/                         # Componentes reutilizables globales
+│   └── shared/                     # Componentes de negocio compartidos
+│
+├── modules/                        # Módulos frontend
+│   ├── auth/                       # components, hooks, services, types
+│   ├── users/
+│   ├── roles/
+│   ├── schedules/
+│   ├── attendance/
+│   └── notifications/
+│
+├── styles/                         # Tailwind, globals, tokens
+│
+├── prisma/
+│   ├── schema.prisma               # Esquema de la BD
+│   ├── migrations/                 # Migraciones versionadas
+│   └── seed.ts                     # Datos iniciales
+│
+├── db/
+│   └── scripts/
+│       ├── init.sh                 # Inicialización del contenedor PG
+│       ├── backup.sh               # Backup de BD
+│       └── restore.sh              # Restauración de BD
+│
+├── docker-compose.yml
+├── .env
+├── package.json                    # npm
+└── .gitignore
+```
 
-Regla Front:
-- Cada modulo en modules/ incluye: components, hooks, services, types.
+## Reglas del Backend (src/modules/)
 
-## Back (API + Logica de negocio)
+- Cada módulo sigue capas internas: **resolvers → service → repository → model**.
+- La validación de reglas críticas (RBAC, conflicto de horario) vive en **service**, no en frontend.
+- Los resolvers solo delegan al service; no contienen lógica de negocio.
+- Los repositories son los únicos que acceden a Prisma.
 
-- App/Back/src/
-- App/Back/src/modules/
-- App/Back/src/modules/auth/
-- App/Back/src/modules/users/
-- App/Back/src/modules/roles/
-- App/Back/src/modules/schedules/
-- App/Back/src/modules/attendance/
-- App/Back/src/modules/notifications/
-- App/Back/src/modules/audit/
-- App/Back/src/common/
-- App/Back/src/common/middlewares/ (auth, rbac, error handler)
-- App/Back/src/common/validators/ (zod)
-- App/Back/src/common/utils/
-- App/Back/src/config/ (logger, app config)
-- App/Back/src/infrastructure/
-- App/Back/src/infrastructure/prisma/
-- App/Back/src/infrastructure/email/
+## Reglas del Frontend (modules/)
 
-Regla Back:
-- Cada modulo sigue capas internas: controller -> service -> repository -> model.
-- La validacion de reglas criticas (RBAC, conflicto de horario) vive en service, no en frontend.
+- Cada módulo incluye: `components/`, `hooks/`, `services/`, `types/`.
+- Los services del frontend usan Apollo Client para queries/mutations.
+- Validación de formularios con Zod + React Hook Form.
 
-## BD (PostgreSQL + Prisma)
+## Regla BD (prisma/)
 
-- App/BD/prisma/
-- App/BD/prisma/schema.prisma
-- App/BD/prisma/migrations/
-- App/BD/prisma/seed.ts
-- App/BD/db/scripts/
-- App/BD/db/scripts/init.sh
-- App/BD/db/scripts/backup.sh
-- App/BD/db/scripts/restore.sh
+- Toda modificación estructural va por migraciones Prisma versionadas.
+- El esquema vive en `prisma/schema.prisma` en la raíz del proyecto.
 
-Entidades base sugeridas:
+## Entidades base
+
 - users
 - roles
 - user_roles
@@ -72,26 +103,20 @@ Entidades base sugeridas:
 - notifications
 - audit_logs
 
-Regla BD:
-- Toda modificacion estructural va por migraciones Prisma versionadas.
+## CI/Calidad (GitHub Actions + Jenkins)
 
-## CI/Calidad (GitHub Actions + SonarCloud)
-
-- .github/workflows/ci.yml
-- .env (en la raiz del proyecto)
-- docker-compose.yml (en la raiz del proyecto)
-- .gitignore (en la raiz del proyecto)
+- `.github/workflows/ci.yml`
 - Checks obligatorios en PR:
-- lint
-- typecheck
-- jest
-- playwright (segun estrategia de rama)
-- sonarcloud quality gate
+  - lint
+  - typecheck
+  - jest
+  - playwright (según estrategia de rama)
+  - Jenkins quality gate
 
 ## Convenciones de largo plazo
 
-- Un modulo por dominio de negocio, no por tipo tecnico.
-- Evitar dependencias cruzadas entre modulos.
-- Compartidos solo en common (back) y components/shared o lib (front).
+- Un módulo por dominio de negocio, no por tipo técnico.
+- Evitar dependencias cruzadas entre módulos.
+- Compartidos solo en `src/common` (backend) y `components/shared` o `src/lib` (frontend).
 - Toda nueva feature debe incluir test y validaciones.
-- El archivo .env se mantiene en raiz y no dentro de carpetas del backend.
+- El archivo `.env` se mantiene en raíz y no dentro de subcarpetas.
