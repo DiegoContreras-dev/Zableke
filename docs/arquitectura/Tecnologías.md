@@ -46,7 +46,7 @@
 ## Decisiones cerradas del stack (100%)
 
 1. **Arquitectura**: Por capas + modular por dominio.
-2. **API**: GraphQL con Apollo Server/Client, endpoint en Next.js API Routes (`app/api/graphql/route.ts`).
+2. **API**: GraphQL con Apollo Server/Client, endpoint en Next.js API Routes (`src/app/api/graphql/route.ts`).
 3. **Backend**: No hay backend separado. Toda la lógica vive dentro del proyecto Next.js.
 4. **Autenticación**: Google (Auth.js/NextAuth).
 5. **Gestor de paquetes oficial**: npm.

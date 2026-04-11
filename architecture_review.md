@@ -33,7 +33,7 @@ Todas las inconsistencias críticas fueron resueltas:
 
 | # | Decisión | Resolución | Impacto |
 |---|---|---|---|
-| 1 | REST vs GraphQL | **GraphQL** (Apollo Server/Client + graphql-codegen) | Endpoint único en `app/api/graphql/route.ts` |
+| 1 | REST vs GraphQL | **GraphQL** (Apollo Server/Client + graphql-codegen) | Endpoint único en `src/app/api/graphql/route.ts` |
 | 2 | Backend separado vs Next.js API | **Next.js API Routes** | Sin `App/Back/` separado, todo en un proyecto |
 | 3 | pnpm vs npm | **npm** | Unificado en todos los docs |
 | 4 | Ubicación de Prisma | **Raíz del proyecto** (`prisma/schema.prisma`) | Sin carpeta `App/BD/` separada |

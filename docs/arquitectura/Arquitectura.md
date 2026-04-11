@@ -6,15 +6,15 @@ Base: arquitectura por capas + modular por dominio, en un **único proyecto Next
 
 ```
 zableke/
-├── app/                            # Next.js App Router
-│   ├── (public)/                   # Páginas públicas (login, landing)
-│   ├── (dashboard)/                # Páginas protegidas (panel principal)
-│   ├── api/
-│   │   └── graphql/
-│   │       └── route.ts            # Apollo Server endpoint
-│   └── layout.tsx
-│
 ├── src/
+│   ├── app/                        # Next.js App Router
+│   │   ├── (public)/               # Páginas públicas (login, landing)
+│   │   ├── (dashboard)/            # Páginas protegidas (panel principal)
+│   │   ├── api/
+│   │   │   └── graphql/
+│   │   │       └── route.ts        # Apollo Server endpoint
+│   │   └── layout.tsx
+│   │
 │   ├── modules/                    # Lógica de negocio (backend)
 │   │   ├── auth/                   # Autenticación (Auth.js)
 │   │   ├── users/                  # Gestión de usuarios
