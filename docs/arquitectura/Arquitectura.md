@@ -15,44 +15,14 @@ zableke/
 │   │   │       └── route.ts        # Apollo Server endpoint
 │   │   └── layout.tsx
 │   │
-│   ├── modules/                    # Lógica de negocio (backend)
-│   │   ├── auth/                   # Autenticación (Auth.js)
-│   │   ├── users/                  # Gestión de usuarios
-│   │   ├── roles/                  # RBAC (Admin/Tutor)
-│   │   ├── schedules/              # Horarios de tutorías
-│   │   ├── attendance/             # Control de asistencia
-│   │   ├── notifications/          # Notificaciones por email
-│   │   └── audit/                  # Auditoría y logs
+│   ├── front/                      # Todo el avance del frontend
+│   │   ├── components/
+│   │   │   ├── ui/
+│   │   │   └── shared/
+│   │   ├── modules/                # auth, users, roles, schedules, etc.
+│   │   └── lib/                    # apollo-client, validators, utils
 │   │
-│   ├── graphql/
-│   │   ├── schema/                 # Type definitions (.graphql)
-│   │   ├── resolvers/              # Resolvers por módulo
-│   │   └── context.ts              # Auth context + Prisma client
-│   │
-│   ├── common/
-│   │   ├── guards/                 # Auth guards, RBAC checks
-│   │   ├── validators/             # Zod schemas (validación backend)
-│   │   └── utils/
-│   │
-│   ├── infrastructure/
-│   │   ├── prisma/                 # Prisma client singleton
-│   │   └── email/                  # Email service (transaccional)
-│   │
-│   └── lib/
-│       ├── apollo-client.ts        # Cliente Apollo (frontend)
-│       └── validators/             # Zod schemas compartidos
-│
-├── components/
-│   ├── ui/                         # Componentes reutilizables globales
-│   └── shared/                     # Componentes de negocio compartidos
-│
-├── modules/                        # Módulos frontend
-│   ├── auth/                       # components, hooks, services, types
-│   ├── users/
-│   ├── roles/
-│   ├── schedules/
-│   ├── attendance/
-│   └── notifications/
+│   └── backend/                    # Carpeta reservada para backend (vacia)
 │
 ├── styles/                         # Tailwind, globals, tokens
 │
@@ -73,14 +43,12 @@ zableke/
 └── .gitignore
 ```
 
-## Reglas del Backend (src/modules/)
+## Reglas del Backend (src/backend/)
 
-- Cada módulo sigue capas internas: **resolvers → service → repository → model**.
-- La validación de reglas críticas (RBAC, conflicto de horario) vive en **service**, no en frontend.
-- Los resolvers solo delegan al service; no contienen lógica de negocio.
-- Los repositories son los únicos que acceden a Prisma.
+- `src/backend/` queda reservado y vacio hasta iniciar implementacion de backend.
+- Cuando se implemente, cada módulo seguirá capas internas: **resolvers → service → repository → model**.
 
-## Reglas del Frontend (modules/)
+## Reglas del Frontend (src/front/modules/)
 
 - Cada módulo incluye: `components/`, `hooks/`, `services/`, `types/`.
 - Los services del frontend usan Apollo Client para queries/mutations.
@@ -117,6 +85,6 @@ zableke/
 
 - Un módulo por dominio de negocio, no por tipo técnico.
 - Evitar dependencias cruzadas entre módulos.
-- Compartidos solo en `src/common` (backend) y `components/shared` o `src/lib` (frontend).
+- Compartidos frontend en `src/front/components/shared` o `src/front/lib`.
 - Toda nueva feature debe incluir test y validaciones.
 - El archivo `.env` se mantiene en raíz y no dentro de subcarpetas.
