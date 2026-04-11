@@ -6,7 +6,6 @@
 - **Framework web**: Next.js (con React)
 - **API**: GraphQL (Apollo Server en Next.js API Routes)
 - **UI**: Tailwind CSS
-- **Componentes UI**: shadcn/ui
 - **ORM**: Prisma
 - **Base de datos**: PostgreSQL
 - **Gestor de paquetes**: npm
@@ -22,15 +21,16 @@
 - Prisma + PostgreSQL
 - Docker Compose (app + db)
 - ESLint
+- Node test runner (`node:test`) para backend
 
 ### Planificado (aun no implementado completamente)
 
 - Auth.js (NextAuth)
 - `@apollo/client` para frontend
 - Zod + React Hook Form
-- Jest + Playwright
+- Playwright (si se define estrategia E2E)
 - Husky + lint-staged + Prettier
-- CI/CD en `.github/workflows`
+- CI/CD extendido en `.github/workflows`
 
 ## Librerías GraphQL
 
@@ -39,8 +39,6 @@
 | `graphql` | Core spec de GraphQL | Compartida |
 | `@apollo/server` | Servidor GraphQL (endpoint en API Route) | Backend |
 | `@apollo/client` | Cliente GraphQL con cache | Frontend (pendiente) |
-| `graphql-tag` | Template literals para queries/mutations | Compartida |
-| `@graphql-codegen/cli` | Generación automática de tipos desde schema | Dev tooling |
 
 ## Recomendaciones adicionales
 
@@ -51,16 +49,16 @@
 - **Testing**: Jest (unitarias/integración) + Playwright (E2E)
 - **Calidad de código**: ESLint + Prettier + Husky + lint-staged
 
-## Versiones sugeridas
+## Versiones objetivo del repositorio
 
-- Node.js 22 LTS
-- Next.js 15
+- Node.js 22+
+- Next.js 16
 - React 19
 - Prisma 6
 - PostgreSQL 16
 - Tailwind CSS 4
-- Apollo Server 4
-- Apollo Client 3
+- Apollo Server 5
+- Apollo Client (pendiente en frontend)
 
 ## Decisiones cerradas del stack (100%)
 
@@ -69,9 +67,9 @@
 3. **Backend**: No hay backend separado. Toda la lógica vive dentro del proyecto Next.js.
 4. **Autenticación**: Google (Auth.js/NextAuth).
 5. **Gestor de paquetes oficial**: npm.
-6. **Testing**: Jest para unitarias/integración y Playwright para E2E.
+6. **Testing backend actual**: Node test runner para unitarias e integracion.
 7. **Automatización de migraciones/tareas**: Scripts `.sh`.
 8. **Auditoría avanzada**: Se implementará más adelante.
-9. **CI/CD**: GitHub Actions (pendiente de implementacion en repo).
-10. **Calidad en PR**: Jenkins como quality gate (análisis estático, bugs, code smells y cobertura).
+9. **CI/CD**: GitHub Actions activo para tests backend.
+10. **Calidad en PR**: reglas de branch/checks a completar segun estrategia del equipo.
 11. **Configuración de entorno**: Variables en `.env` en la raíz (junto a `docker-compose.yml` y `.gitignore`).

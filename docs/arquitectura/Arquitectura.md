@@ -1,6 +1,6 @@
 # Arquitectura del Proyecto
 
-Base: arquitectura por capas + modular por dominio, en un **único proyecto Next.js** con **GraphQL** (Apollo Server) como API.
+Base: arquitectura por capas + modular por dominio, en un unico proyecto Next.js con GraphQL (Apollo Server) como API.
 
 ## Estructura del Proyecto
 
@@ -22,17 +22,18 @@ zableke/
 │   │   ├── modules/                # auth, users, roles, schedules, etc.
 │   │   └── lib/                    # apollo-client, validators, utils
 │   │
-│   ├── backend/                    # Backend por modulos y capas (en implementacion)
+│   ├── backend/                    # Backend por modulos y capas
 │   │   ├── common/
 │   │   ├── config/
 │   │   ├── infrastructure/
 │   │   ├── modules/
+│   │   ├── scripts/
 │   │   └── test/
 │   │
-│   ├── graphql/                    # Contexto GraphQL activo (transicion)
+│   ├── graphql/                    # Contexto GraphQL
 │   │   └── context.ts
 │   │
-│   └── infrastructure/             # Prisma activo usado por API (transicion)
+│   └── infrastructure/             # Prisma usado por API
 │       └── prisma/
 │
 ├── styles/                         # Tailwind, globals, tokens
@@ -57,8 +58,8 @@ zableke/
 ## Reglas del Backend (src/backend/)
 
 - El backend se implementa en `src/backend/` por dominio.
-- Cada módulo seguirá capas internas: **resolvers → service → repository → model**.
-- Mientras dure la migracion, `src/graphql/context.ts` y `src/infrastructure/prisma` siguen activos para la API.
+- Cada modulo sigue capas internas: `resolvers -> service -> repository -> model`.
+- `src/graphql/context.ts` y `src/infrastructure/prisma` son piezas activas del backend runtime.
 
 ## Reglas del Frontend (src/front/modules/)
 
@@ -83,21 +84,23 @@ zableke/
 - notifications
 - audit_logs
 
-## CI/Calidad (GitHub Actions + Jenkins)
+## CI/Calidad
 
-- `.github/workflows/ci.yml`
-- Checks obligatorios en PR:
-  - lint
-  - typecheck
-  - jest
-  - playwright (según estrategia de rama)
-  - Jenkins quality gate
+- Workflow actual: `.github/workflows/backend-tests.yml`
+- Estrategia actual:
+  - tests backend (unitario/servicio) en workflow
+  - tests de integracion por comando dedicado
 
 ## Convenciones de largo plazo
 
 - Un módulo por dominio de negocio, no por tipo técnico.
 - Evitar dependencias cruzadas entre módulos.
 - Compartidos frontend en `src/front/components/shared` o `src/front/lib`.
-- Migrar gradualmente los elementos backend en `src/graphql` y `src/infrastructure` hacia `src/backend`.
-- Toda nueva feature debe incluir test y validaciones.
+- Toda nueva feature de backend debe incluir test unitario o de integracion.
 - El archivo `.env` se mantiene en raíz y no dentro de subcarpetas.
+
+## Estado funcional actual
+
+- Epica 2 backend: implementada (auth institucional).
+- Epica 3 backend: implementada (RBAC y gestion de roles).
+- Epica 4: pendiente (horarios y prevencion de conflictos).

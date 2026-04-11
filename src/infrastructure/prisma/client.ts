@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
+import { databaseConfig } from "@/backend/config/database.config";
+
 type PrismaClientType = PrismaClient;
 
 const globalForPrisma = globalThis as unknown as {
@@ -9,6 +11,7 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
 	globalForPrisma.prisma ??
 	new PrismaClient({
+		...(databaseConfig.url ? { datasourceUrl: databaseConfig.url } : {}),
 		log: process.env.NODE_ENV === "development" ? ["query", "warn", "error"] : ["error"],
 	});
 

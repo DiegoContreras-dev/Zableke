@@ -2,8 +2,8 @@
 
 ## Resumen
 
-El proyecto está en fase de implementación temprana del MVP para gestión de tutorías UCN.
-La base técnica está operativa (Next.js, GraphQL base, Prisma, Docker), pero la lógica de negocio por módulos aún está en construcción.
+El proyecto está en fase MVP con backend funcional para las épicas 2 y 3.
+La base técnica está operativa (Next.js, GraphQL, Prisma, Docker, tests backend, workflow CI de tests).
 
 ## Estado real del repositorio
 
@@ -11,28 +11,28 @@ La base técnica está operativa (Next.js, GraphQL base, Prisma, Docker), pero l
 
 - Proyecto único Next.js en raíz.
 - App Router activo en `src/app`.
-- Endpoint GraphQL base en `src/app/api/graphql/route.ts`.
+- Endpoint GraphQL operativo en `src/app/api/graphql/route.ts`.
 - Contexto GraphQL activo en `src/graphql/context.ts`.
 - Cliente Prisma activo en `src/infrastructure/prisma/client.ts`.
 - Docker Compose operativo con servicios `app` y `db`.
 - Estructura frontend separada en `src/front`.
-- Estructura backend creada en `src/backend` (scaffold por módulos y capas).
+- Estructura backend activa en `src/backend` por módulos y capas.
+- Auth institucional backend implementado y testeado.
+- RBAC backend implementado y testeado.
+- Tests backend unitarios + integracion ejecutables por scripts npm.
+- Workflow GitHub Actions para tests backend (`.github/workflows/backend-tests.yml`).
 
 ### En implementación
 
-- Migración del backend activo hacia `src/backend` (actualmente coexiste con `src/graphql` y `src/infrastructure`).
-- Lógica de negocio de módulos (`auth`, `users`, `roles`, `schedules`, `attendance`, `notifications`, `audit`).
-- Contratos GraphQL por dominio (actualmente schema mínimo de health check).
+- Lógica de negocio de módulos `schedules`, `attendance`, `notifications`, `audit`.
+- Contratos GraphQL de esos dominios aún no implementados.
 
 ### Pendiente
 
-- Auth.js y control de acceso institucional completo.
-- RBAC funcional por roles Admin/Tutor.
 - Validación de conflictos de horario en tiempo real.
 - Notificaciones automáticas por correo.
 - Auditoría inmutable completa.
-- Pipeline CI/CD en `.github/workflows`.
-- Suite de pruebas (unit/integration/e2e) conectada a ejecución automatizada.
+- Tests E2E y estrategia CI extendida para integración automática con BD de pruebas.
 
 ## Decisiones vigentes
 
@@ -40,16 +40,16 @@ La base técnica está operativa (Next.js, GraphQL base, Prisma, Docker), pero l
 2. Proyecto unificado (sin separación física de app frontend/backend en runtime).
 3. Estructura de trabajo: `src/front` para frontend y `src/backend` para backend en desarrollo.
 4. Persistencia: Prisma + PostgreSQL.
-5. Contenerización: Docker Compose para app y base de datos.
+5. Contenerización: Docker Compose para app y base de datos (imágenes Alpine).
 
 ## Riesgos actuales
 
-1. Coexistencia temporal de rutas backend (`src/backend` vs `src/graphql` y `src/infrastructure`) puede causar confusión si no se define una ruta final de migración.
-2. Existe API funcional base, pero aún no hay flujo de tutorías completo conectado end-to-end.
-3. Sin CI/CD activo, el control de calidad depende de ejecución manual de checks.
+1. Flujos de negocio centrales del MVP (horarios/notificaciones/auditoría) no están cerrados aún.
+2. Integración tests depende de que exista una BD disponible y sincronizada.
+3. Falta endurecer autenticación de request para producción (hoy se usa contexto por cabecera de usuario para autorización en resolvers).
 
 ## Recomendación inmediata
 
-1. Definir y documentar el primer flujo vertical del MVP: `schedules` (crear/editar/cancelar + validación de conflicto).
-2. Implementarlo completo desde módulo backend hasta operación GraphQL.
-3. Al cerrar ese flujo, formalizar la convención final de ubicación backend para evitar duplicidad de rutas.
+1. Implementar épica 4: CRUD de horarios con validación de conflicto en tiempo real.
+2. Agregar auditoría de operaciones críticas de roles y horarios.
+3. Agregar notificaciones automáticas para creación/edición/cancelación de tutorías.

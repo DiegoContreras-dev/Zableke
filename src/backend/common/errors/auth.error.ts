@@ -2,7 +2,9 @@ export type AuthErrorCode =
   | "INVALID_INPUT"
   | "EMAIL_NOT_ALLOWED"
   | "USER_INACTIVE"
-  | "UNAUTHORIZED";
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "RESOURCE_NOT_FOUND";
 
 export class AuthError extends Error {
   public readonly code: AuthErrorCode;

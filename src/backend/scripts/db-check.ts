@@ -1,11 +1,8 @@
+import { ensureDatabaseUrl } from "@/backend/config/database.config";
 import { ensurePrismaConnected, disconnectPrisma, prisma } from "@/infrastructure/prisma/client";
 
 async function main(): Promise<void> {
-  if (!process.env.DATABASE_URL) {
-    throw new Error(
-      "DATABASE_URL is not set. Create .env from .env.example and configure your database connection."
-    );
-  }
+  ensureDatabaseUrl();
 
   await ensurePrismaConnected();
 
