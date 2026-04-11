@@ -19,7 +19,7 @@ const resolvers = {
 const server = new ApolloServer({ typeDefs, resolvers });
 
 const graphqlHandler = startServerAndCreateNextHandler<NextRequest>(server, {
-  context: async (req) => createContext(req),
+  context: async (req: NextRequest) => createContext(req),
 });
 
 export async function POST(request: NextRequest) {
