@@ -7,7 +7,7 @@ Pasar de arquitectura definida a MVP funcional y desplegable en VM, alineado a l
 - Baseline de proyecto Next.js activo.
 - Modelo Prisma inicial implementado para entidades core.
 - Endpoint GraphQL base operativo con Apollo Server.
-- Scripts de base de datos agregados para generar, migrar y seed.
+- Scripts de base de datos activos en `package.json`: `db:generate`, `db:migrate`, `db:push`, `db:seed`.
 
 ## Fase 0 - Cierre de decisiones bloqueantes
 1. Definir regla exacta de conflicto de horario:

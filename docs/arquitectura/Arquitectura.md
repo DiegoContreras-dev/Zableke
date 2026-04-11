@@ -22,7 +22,18 @@ zableke/
 │   │   ├── modules/                # auth, users, roles, schedules, etc.
 │   │   └── lib/                    # apollo-client, validators, utils
 │   │
-│   └── backend/                    # Carpeta reservada para backend (vacia)
+│   ├── backend/                    # Backend por modulos y capas (en implementacion)
+│   │   ├── common/
+│   │   ├── config/
+│   │   ├── infrastructure/
+│   │   ├── modules/
+│   │   └── test/
+│   │
+│   ├── graphql/                    # Contexto GraphQL activo (transicion)
+│   │   └── context.ts
+│   │
+│   └── infrastructure/             # Prisma activo usado por API (transicion)
+│       └── prisma/
 │
 ├── styles/                         # Tailwind, globals, tokens
 │
@@ -45,8 +56,9 @@ zableke/
 
 ## Reglas del Backend (src/backend/)
 
-- `src/backend/` queda reservado y vacio hasta iniciar implementacion de backend.
-- Cuando se implemente, cada módulo seguirá capas internas: **resolvers → service → repository → model**.
+- El backend se implementa en `src/backend/` por dominio.
+- Cada módulo seguirá capas internas: **resolvers → service → repository → model**.
+- Mientras dure la migracion, `src/graphql/context.ts` y `src/infrastructure/prisma` siguen activos para la API.
 
 ## Reglas del Frontend (src/front/modules/)
 
@@ -86,5 +98,6 @@ zableke/
 - Un módulo por dominio de negocio, no por tipo técnico.
 - Evitar dependencias cruzadas entre módulos.
 - Compartidos frontend en `src/front/components/shared` o `src/front/lib`.
+- Migrar gradualmente los elementos backend en `src/graphql` y `src/infrastructure` hacia `src/backend`.
 - Toda nueva feature debe incluir test y validaciones.
 - El archivo `.env` se mantiene en raíz y no dentro de subcarpetas.

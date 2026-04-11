@@ -13,13 +13,32 @@
 - **Contenedores**: Docker (con Docker Compose)
 - **Control de versiones**: Git
 
+## Estado del stack
+
+### Implementado actualmente
+
+- Next.js + React + TypeScript
+- GraphQL con `@apollo/server` y `@as-integrations/next`
+- Prisma + PostgreSQL
+- Docker Compose (app + db)
+- ESLint
+
+### Planificado (aun no implementado completamente)
+
+- Auth.js (NextAuth)
+- `@apollo/client` para frontend
+- Zod + React Hook Form
+- Jest + Playwright
+- Husky + lint-staged + Prettier
+- CI/CD en `.github/workflows`
+
 ## Librerías GraphQL
 
 | Librería | Propósito | Lado |
 |---|---|---|
 | `graphql` | Core spec de GraphQL | Compartida |
 | `@apollo/server` | Servidor GraphQL (endpoint en API Route) | Backend |
-| `@apollo/client` | Cliente GraphQL con cache | Frontend |
+| `@apollo/client` | Cliente GraphQL con cache | Frontend (pendiente) |
 | `graphql-tag` | Template literals para queries/mutations | Compartida |
 | `@graphql-codegen/cli` | Generación automática de tipos desde schema | Dev tooling |
 
@@ -53,6 +72,6 @@
 6. **Testing**: Jest para unitarias/integración y Playwright para E2E.
 7. **Automatización de migraciones/tareas**: Scripts `.sh`.
 8. **Auditoría avanzada**: Se implementará más adelante.
-9. **CI/CD**: GitHub Actions.
+9. **CI/CD**: GitHub Actions (pendiente de implementacion en repo).
 10. **Calidad en PR**: Jenkins como quality gate (análisis estático, bugs, code smells y cobertura).
 11. **Configuración de entorno**: Variables en `.env` en la raíz (junto a `docker-compose.yml` y `.gitignore`).
