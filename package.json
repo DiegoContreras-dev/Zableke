@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:backend": "node --import tsx --test $(find src/backend/test -type f -name 'test-*.ts' | sort)",
+    "db:check": "node --import tsx src/backend/scripts/db-check.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

@@ -1,10 +1,6 @@
-const { PrismaClient } = require("@prisma/client") as {
-	PrismaClient: new (options?: {
-		log?: Array<"query" | "info" | "warn" | "error">;
-	}) => unknown;
-};
+import { PrismaClient } from "@prisma/client";
 
-type PrismaClientType = InstanceType<typeof PrismaClient>;
+type PrismaClientType = PrismaClient;
 
 const globalForPrisma = globalThis as unknown as {
 	prisma: PrismaClientType | undefined;
@@ -15,6 +11,21 @@ export const prisma =
 	new PrismaClient({
 		log: process.env.NODE_ENV === "development" ? ["query", "warn", "error"] : ["error"],
 	});
+
+let connectPromise: Promise<void> | null = null;
+
+export async function ensurePrismaConnected(): Promise<void> {
+	if (!connectPromise) {
+		connectPromise = prisma.$connect();
+	}
+
+	await connectPromise;
+}
+
+export async function disconnectPrisma(): Promise<void> {
+	await prisma.$disconnect();
+	connectPromise = null;
+}
 
 if (process.env.NODE_ENV !== "production") {
 	globalForPrisma.prisma = prisma;

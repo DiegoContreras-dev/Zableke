@@ -5,3 +5,9 @@ node_modules
 npm-debug.log*
 *.local
 .env
+coverage
+dist
+.DS_Store
+.vscode
+App
+docs

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { prisma } from "@/infrastructure/prisma/client";
+import { ensurePrismaConnected, prisma } from "@/infrastructure/prisma/client";
 
 export interface GraphQLContext {
   prisma: typeof prisma;
@@ -12,6 +12,8 @@ export interface GraphQLContext {
 export async function createContext(
   request?: Pick<NextRequest, "headers">
 ): Promise<GraphQLContext> {
+  await ensurePrismaConnected();
+
   return {
     prisma,
     requestId: crypto.randomUUID(),
