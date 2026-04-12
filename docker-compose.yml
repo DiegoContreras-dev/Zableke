@@ -12,15 +12,25 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-me}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zableke}:${POSTGRES_PASSWORD:-zableke_dev}@db:5432/${POSTGRES_DB:-zableke}?schema=public
     init: true
     read_only: true
     tmpfs:
       - /tmp
     ports:
       - "3000:3000"
+    command:
+      - sh
+      - -c
+      - |
+        echo "========================================"
+        echo "Zableke app iniciada"
+        echo "Login:    http://localhost:3000/login"
+        echo "GraphQL:  http://localhost:3000/api/graphql"
+        echo "========================================"
+        exec node server.js
 
   db:
     image: postgres:16-alpine
