@@ -27,9 +27,9 @@ export function SessionRow({ session }: SessionRowProps) {
   return (
     <li className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm transition-all duration-150 hover:border-[#23415B]/30 hover:shadow-md">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-slate-900">{session.course}</p>
-          <p className="text-sm text-slate-600">
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-semibold text-slate-900 break-words">{session.course}</p>
+          <p className="text-sm text-slate-600 break-words">
             {session.slot} · {session.section} · {session.room} · {session.modality}
           </p>
         </div>
@@ -38,16 +38,16 @@ export function SessionRow({ session }: SessionRowProps) {
         </span>
       </div>
 
-      <div className="mt-2.5 flex items-center justify-end h-[36px]">
+      <div className="mt-2.5 flex items-center justify-end sm:h-[36px]">
         {session.status !== "pendiente" ? (
           <Link
             href={`/tutor/asistencia?session=${session.id}`}
-            className="inline-flex h-full items-center justify-center rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#1a3146] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#23415B]"
+            className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#1a3146] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#23415B] sm:h-full sm:w-auto"
           >
             Rellenar asistencia
           </Link>
         ) : (
-          <span className="text-xs font-medium text-slate-500 italic">Habilitado al momento de la sesión</span>
+          <span className="w-full text-right text-xs font-medium italic text-slate-500">Habilitado al momento de la sesión</span>
         )}
       </div>
     </li>

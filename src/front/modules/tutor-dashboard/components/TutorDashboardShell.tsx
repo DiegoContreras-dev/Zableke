@@ -59,20 +59,20 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] font-sans text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-[#F3F4F6] font-sans text-slate-900">
       {/* HEADER DESKTOP & MOBILE */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           
           {/* Left section: Logo & Mobile Menu Button */}
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="inline-flex items-center justify-center rounded-md p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="flex items-center">
+            <div className="flex shrink-0 items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/imports/logo_exito_academico.png"
@@ -105,7 +105,7 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
           </div>
 
           {/* Right section: Notifications & Profile Dropdown */}
-          <div className="flex items-center gap-2 lg:gap-4">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-4">
             <Link
               href="/tutor/notificaciones"
               className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-[#23415B] transition-colors"
@@ -118,7 +118,7 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1 pr-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#23415B] focus:ring-offset-1 transition-all"
+                className="flex items-center gap-0 rounded-full border border-slate-200 bg-white p-1 sm:gap-2 sm:pr-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#23415B] focus:ring-offset-1 transition-all"
                 aria-expanded={isProfileDropdownOpen}
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#23415B] text-white">
@@ -209,7 +209,7 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
       )}
 
       {/* MAIN CONTENT AREA */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
         {/* Page Header (Mobile Only for visual context if needed, but we keep it clean now) */}
         <div className="mb-6 lg:hidden">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{pageTitle}</h1>
