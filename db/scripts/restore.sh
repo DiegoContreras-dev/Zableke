@@ -1,5 +1,5 @@
 #!/bin/bash
-# restore.sh — Restauración de la base de datos PostgreSQL
+# restore.sh â€” RestauraciÃ³n de la base de datos PostgreSQL
 
 set -e
 
@@ -12,4 +12,4 @@ BACKUP_FILE=$1
 
 echo "Restaurando desde: ${BACKUP_FILE}"
 psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "${BACKUP_FILE}"
-echo "Restauración completada."
+echo "RestauraciÃ³n completada."
