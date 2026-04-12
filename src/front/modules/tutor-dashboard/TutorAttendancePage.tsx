@@ -156,7 +156,7 @@ export function TutorAttendancePage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 lg:text-3xl">
-              Rellenar asistencia
+              Asistencia
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               Registro digital por bloque con validación obligatoria y trazabilidad.
@@ -204,14 +204,14 @@ export function TutorAttendancePage() {
           >
             <div className="space-y-4 overflow-y-auto p-3 lg:p-4">
               <div>
-                <RequiredLabel text="Selecciona tu nombre" />
-                <select
+                <RequiredLabel text="Tutor:" />
+                <input
+                  type="text"
+                  readOnly
+                  disabled
                   value={form.tutorName}
-                  onChange={(event) => updateField("tutorName", event.target.value)}
-                  className={fieldClassName}
-                >
-                  <option>{attendanceDefaults.tutorName}</option>
-                </select>
+                  className={`${fieldClassName} cursor-not-allowed bg-slate-50 font-medium text-slate-700`}
+                />
               </div>
 
               <div>

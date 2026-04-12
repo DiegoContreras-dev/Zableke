@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
 import {
   Bell,
@@ -16,10 +16,14 @@ import {
   LogOut,
   ChevronDown
 } from "lucide-react";
+import {
+  clearTutorSession,
+  hasTutorSession,
+} from "@/front/modules/auth/services/session";
 
 const mainNavItems = [
   { href: "/tutor", label: "Inicio", icon: Home },
-  { href: "/tutor/asistencia", label: "Rellenar asistencia", icon: ClipboardCheck },
+  { href: "/tutor/asistencia", label: "Asistencia", icon: ClipboardCheck },
   { href: "/tutor/historial", label: "Historial", icon: History },
   { href: "/tutor/calendario", label: "Calendario", icon: CalendarDays },
 ] as const;
@@ -30,9 +34,36 @@ type TutorDashboardShellProps = {
 
 export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Resolve session on client after hydration to avoid SSR/client mismatch.
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setHasActiveSession(hasTutorSession());
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  // Sync avatar with local storage
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const storedAvatar = localStorage.getItem("tutor_avatar");
+      setAvatarUrl(storedAvatar);
+    };
+
+    handleAvatarUpdate(); // Load initial
+    window.addEventListener("tutor_avatar_updated", handleAvatarUpdate);
+
+    return () => {
+      window.removeEventListener("tutor_avatar_updated", handleAvatarUpdate);
+    };
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,6 +88,26 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
     );
     return selected?.label ?? "Tutor Dashboard";
   }, [pathname]);
+
+  useEffect(() => {
+    if (hasActiveSession === false) {
+      router.replace("/login");
+    }
+  }, [hasActiveSession, router]);
+
+  const handleLogout = () => {
+    clearTutorSession();
+    setHasActiveSession(false);
+    setIsProfileDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    router.replace("/login");
+  };
+
+  if (hasActiveSession !== true) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6]" aria-label="Comprobando sesión" />
+    );
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#F3F4F6] font-sans text-slate-900">
@@ -121,8 +172,13 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
                 className="flex items-center gap-0 rounded-full border border-slate-200 bg-white p-1 sm:gap-2 sm:pr-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#23415B] focus:ring-offset-1 transition-all"
                 aria-expanded={isProfileDropdownOpen}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#23415B] text-white">
-                  <UserRound className="h-4 w-4" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#23415B] text-white overflow-hidden shrink-0">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserRound className="h-4 w-4" />
+                  )}
                 </div>
                 <span className="hidden text-sm font-medium text-slate-700 sm:block">Mi Perfil</span>
                 <ChevronDown className="h-4 w-4 text-slate-500 hidden sm:block" />
@@ -156,7 +212,7 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
                   <div className="py-1">
                     <button
                       className="group flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                      onClick={() => console.log('Cerrar sesión')}
+                      onClick={handleLogout}
                     >
                       <LogOut className="h-4 w-4 text-red-500" />
                       Cerrar sesión

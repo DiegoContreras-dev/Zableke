@@ -1,18 +1,27 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Input } from './components/Input';
 import { Button } from './components/Button';
 import { Checkbox } from './components/Checkbox';
 import { Alert } from './components/Alert';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
+import { createTutorSession, hasTutorSession } from '@/front/modules/auth/services/session';
 
 export default function App() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
+
+  useEffect(() => {
+    if (hasTutorSession()) {
+      router.replace('/tutor');
+    }
+  }, [router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +37,9 @@ export default function App() {
 
     // Simular carga
     setTimeout(() => {
+      createTutorSession(rememberMe);
       setIsLoading(false);
-      console.log('Login attempt:', { email, rememberMe });
+      router.replace('/tutor');
     }, 2000);
   };
 
