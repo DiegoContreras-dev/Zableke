@@ -1,6 +1,6 @@
 import { Source_Sans_3 } from "next/font/google";
 
-import { TutorDashboardShell } from "@/front/modules/tutor-dashboard/components/TutorDashboardShell";
+import { TutorDashboardShell } from "@/frontend/modules/tutor-dashboard/components/TutorDashboardShell";
 
 const sourceSans = Source_Sans_3({
   subsets: ["latin"],

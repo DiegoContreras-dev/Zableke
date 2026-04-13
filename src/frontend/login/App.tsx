@@ -2,12 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { gql } from '@apollo/client';
+import { useMutation } from '@apollo/client/react';
 import { Input } from './components/Input';
 import { Button } from './components/Button';
 import { Checkbox } from './components/Checkbox';
 import { Alert } from './components/Alert';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
-import { createTutorSession, hasTutorSession } from '@/front/modules/auth/services/session';
+import { createTutorSession, hasTutorSession } from '@/frontend/modules/auth/services/session';
+
+const AUTHENTICATE_WITH_EMAIL = gql`
+  mutation AuthenticateWithEmail($email: String!) {
+    authenticateWithEmail(input: { email: $email }) {
+      user {
+        id
+        email
+        firstName
+        lastName
+        roles
+      }
+      issuedAt
+      expiresAt
+    }
+  }
+`;
 
 export default function App() {
   const router = useRouter();
@@ -16,6 +34,9 @@ export default function App() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('Solo se permiten correos institucionales UCN.');
+
+  const [authenticateWithEmail] = useMutation(AUTHENTICATE_WITH_EMAIL);
 
   useEffect(() => {
     if (hasTutorSession()) {
@@ -23,11 +44,11 @@ export default function App() {
     }
   }, [router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validar que sea correo institucional
     if (!email.endsWith('@ucn.cl') && !email.endsWith('@alumnos.ucn.cl')) {
+      setErrorMessage('Solo se permiten correos institucionales UCN.');
       setShowError(true);
       return;
     }
@@ -35,12 +56,19 @@ export default function App() {
     setShowError(false);
     setIsLoading(true);
 
-    // Simular carga
-    setTimeout(() => {
-      createTutorSession(rememberMe);
+    try {
+      const { data } = await authenticateWithEmail({ variables: { email } });
+      if (data?.authenticateWithEmail?.user) {
+        createTutorSession(rememberMe);
+        router.replace('/tutor');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al iniciar sesión.';
+      setErrorMessage(message);
+      setShowError(true);
+    } finally {
       setIsLoading(false);
-      router.replace('/tutor');
-    }, 2000);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -113,7 +141,7 @@ export default function App() {
           {showError && (
             <div className="mb-6">
               <Alert variant="error">
-                Debes usar un correo institucional UCN
+                {errorMessage}
               </Alert>
             </div>
           )}

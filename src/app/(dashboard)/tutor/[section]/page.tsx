@@ -1,5 +1,5 @@
-import { TutorPlaceholderPage } from "@/front/modules/tutor-dashboard/TutorPlaceholderPage";
-import { TutorProfilePage } from "@/front/modules/tutor-dashboard/TutorProfilePage";
+import { TutorPlaceholderPage } from "@/frontend/modules/tutor-dashboard/TutorPlaceholderPage";
+import { TutorProfilePage } from "@/frontend/modules/tutor-dashboard/TutorProfilePage";
 
 const sectionTitleMap: Record<string, string> = {
   historial: "Historial de asistencias",

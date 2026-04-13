@@ -17,6 +17,7 @@
     "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "@apollo/client": "^4.1.7",
     "@apollo/server": "^5.5.0",
     "@as-integrations/next": "^4.1.0",
     "@prisma/client": "^6.19.3",

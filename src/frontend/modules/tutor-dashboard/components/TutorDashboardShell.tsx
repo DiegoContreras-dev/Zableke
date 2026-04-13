@@ -19,7 +19,7 @@ import {
 import {
   clearTutorSession,
   hasTutorSession,
-} from "@/front/modules/auth/services/session";
+} from "@/frontend/modules/auth/services/session";
 
 const mainNavItems = [
   { href: "/tutor", label: "Inicio", icon: Home },
