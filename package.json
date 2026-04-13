@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:backend": "node --env-file=.env --import tsx --test $(find src/backend/test -type f -name 'test-*.ts' ! -path 'src/backend/test/integration/*' | sort)",
+    "test:backend": "node --import tsx --test $(find src/backend/test -type f -name 'test-*.ts' ! -path 'src/backend/test/integration/*' | sort)",
     "test:backend:integration": "npm run db:push && node --env-file=.env --import tsx --test $(find src/backend/test/integration -type f -name 'test-*.ts' | sort)",
     "test:backend:all": "npm run db:push && node --env-file=.env --import tsx --test $(find src/backend/test -type f -name 'test-*.ts' | sort)",
     "db:check": "node --env-file=.env --import tsx src/backend/scripts/db-check.ts",
