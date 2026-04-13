@@ -1,5 +1,5 @@
 #!/bin/bash
-# backup.sh â€” Backup de la base de datos PostgreSQL
+# backup.sh - Backup de la base de datos PostgreSQL
 
 set -e
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# restore.sh â€” RestauraciÃ³n de la base de datos PostgreSQL
+# restore.sh - Restauración de la base de datos PostgreSQL
 
 set -e
 
