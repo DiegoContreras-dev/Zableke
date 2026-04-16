@@ -1,5 +1,7 @@
 import { TutorPlaceholderPage } from "@/frontend/modules/tutor-dashboard/TutorPlaceholderPage";
 import { TutorProfilePage } from "@/frontend/modules/tutor-dashboard/TutorProfilePage";
+import { TutorHistorialPage } from "@/frontend/modules/tutor-dashboard/TutorHistorialPage";
+import { TutorCalendarioPage } from "@/frontend/modules/tutor-dashboard/TutorCalendarioPage";
 
 const sectionTitleMap: Record<string, string> = {
   historial: "Historial de asistencias",
@@ -19,6 +21,14 @@ export default async function TutorSectionRoute({
 
   if (section === "perfil") {
     return <TutorProfilePage />;
+  }
+
+  if (section === "historial") {
+    return <TutorHistorialPage />;
+  }
+
+  if (section === "calendario") {
+    return <TutorCalendarioPage />;
   }
 
   return <TutorPlaceholderPage sectionLabel={title} />;

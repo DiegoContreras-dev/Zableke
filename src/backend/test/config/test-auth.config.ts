@@ -5,7 +5,7 @@ import { authConfig } from "@/backend/config/auth.config";
 
 test("authConfig has default allowed domains", () => {
   assert.ok(authConfig.allowedDomains.includes("alumnos.ucn.cl"));
-  assert.ok(authConfig.allowedDomains.includes("ucn.cl"));
+  assert.ok(authConfig.allowedDomains.includes("ce.ucn.cl"));
 });
 
 test("authConfig has positive session ttl", () => {

@@ -55,8 +55,8 @@ interface AuthSessionGoogleResult {
 }
 
 const AUTHENTICATE_WITH_EMAIL = gql`
-  mutation AuthenticateWithEmail($email: String!) {
-    authenticateWithEmail(input: { email: $email }) {
+  mutation AuthenticateWithEmail($email: String!, $password: String) {
+    authenticateWithEmail(input: { email: $email, password: $password }) {
       user { id email firstName lastName roles }
       token
       issuedAt
@@ -79,6 +79,7 @@ const AUTHENTICATE_WITH_GOOGLE = gql`
 export default function App() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('Solo se permiten correos institucionales UCN.');
@@ -87,6 +88,16 @@ export default function App() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   // Ref para el callback de Google (evita stale closure)
   const googleCallbackRef = useRef<((r: { credential: string }) => void) | null>(null);
+
+  const isAdminEmail = email.trim().toLowerCase().endsWith('@ce.ucn.cl');
+
+  const redirectByRoles = (roles: string[]) => {
+    if (roles.includes('ADMIN')) {
+      router.replace('/admin');
+    } else {
+      router.replace('/tutor');
+    }
+  };
 
   const [authenticateWithEmail] = useMutation<AuthSessionResult>(AUTHENTICATE_WITH_EMAIL);
   const [authenticateWithGoogle] = useMutation<AuthSessionGoogleResult>(AUTHENTICATE_WITH_GOOGLE);
@@ -116,7 +127,7 @@ export default function App() {
         const session = data?.authenticateWithGoogle;
         if (session?.user && session?.token) {
           createTutorSession(session.token);
-          router.replace('/tutor');
+          redirectByRoles(session.user.roles);
         }
       })
       .catch((err: unknown) => {
@@ -182,11 +193,13 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const { data } = await authenticateWithEmail({ variables: { email } });
+      const { data } = await authenticateWithEmail({
+        variables: { email, password: isAdminEmail ? password : undefined },
+      });
       const session = data?.authenticateWithEmail;
       if (session?.user && session?.token) {
         createTutorSession(session.token);
-        router.replace('/tutor');
+        redirectByRoles(session.user.roles);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión.';
@@ -275,10 +288,29 @@ export default function App() {
               label="Correo electrónico institucional"
               placeholder="nombre.apellido@ucn.cl"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setPassword(''); }}
               hasError={showError}
               required
             />
+
+            {/* Campo de contraseña: solo para cuentas @ce.ucn.cl (admin) */}
+            {isAdminEmail && (
+              <div>
+                <Input
+                  type="password"
+                  label="Contraseña"
+                  placeholder="Contraseña de administrador"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  hasError={showError}
+                  required
+                />
+                <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                  <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                  Cuenta de coordinación (@ce.ucn.cl)
+                </p>
+              </div>
+            )}
 
             {/* Primary Button */}
             <Button

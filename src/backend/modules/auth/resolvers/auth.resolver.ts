@@ -23,6 +23,7 @@ export const authTypeDefs = `
     email: String!
     firstName: String
     lastName: String
+    password: String
   }
 
   extend type Mutation {

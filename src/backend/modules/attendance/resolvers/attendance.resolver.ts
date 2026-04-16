@@ -16,6 +16,23 @@ export const attendanceTypeDefs = `
     notes: String
   }
 
+  type AttendanceHistoryItem {
+    id: ID!
+    scheduleId: String!
+    scheduleTitle: String!
+    scheduleDescription: String
+    scheduleStartsAt: String!
+    scheduleEndsAt: String!
+    scheduleStatus: String!
+    roomName: String
+    studentEmail: String!
+    studentName: String
+    status: String!
+    markedById: String!
+    markedAt: String!
+    notes: String
+  }
+
   input StudentAttendanceInput {
     studentEmail: String!
     studentName: String
@@ -30,6 +47,7 @@ export const attendanceTypeDefs = `
 
   extend type Query {
     attendancesBySchedule(scheduleId: ID!): [AttendanceRecord!]!
+    myAttendanceHistory: [AttendanceHistoryItem!]!
   }
 
   extend type Mutation {
@@ -46,6 +64,15 @@ export const attendanceResolvers = {
     ) => {
       requireUser(context.currentUser);
       return attendanceService.getAttendancesBySchedule(args.scheduleId);
+    },
+
+    myAttendanceHistory: async (
+      _: unknown,
+      __: unknown,
+      context: GraphQLContext
+    ) => {
+      const user = requireUser(context.currentUser);
+      return attendanceService.getMyAttendanceHistory(user.id);
     },
   },
   Mutation: {

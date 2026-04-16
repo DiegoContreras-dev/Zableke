@@ -42,6 +42,7 @@ model User {
   phone             String?
   bio               String?
   linkedinUrl       String?
+  passwordHash      String?
   isActive          Boolean     @default(true)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt

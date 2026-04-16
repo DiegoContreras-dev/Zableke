@@ -2,6 +2,7 @@ import { AuthError } from "@/backend/common/errors/auth.error";
 import { signToken } from "@/backend/common/utils/jwt";
 import { validateInstitutionalEmail } from "@/backend/common/validators/institutional-email.validator";
 import { authConfig, DOMAIN_ROLE_MAP } from "@/backend/config/auth.config";
+import bcrypt from "bcryptjs";
 import {
   parseLoginWithEmailInput,
   type LoginWithEmailInput,
@@ -83,7 +84,37 @@ export class AuthService {
 
     let user = await this.repository.findByEmail(validation.normalizedEmail);
 
-    if (!user) {
+    const domain = validation.normalizedEmail.split("@")[1]?.toLowerCase();
+    const isAdminDomain = domain === "ce.ucn.cl";
+
+    if (isAdminDomain) {
+      // Las cuentas admin deben estar pre-seeded con contraseña; no se auto-crean
+      if (!user) {
+        throw new AuthError(
+          "Admin account not found. Contact system administrator.",
+          "USER_NOT_FOUND",
+          404
+        );
+      }
+      if (!input.password) {
+        throw new AuthError(
+          "Password is required for admin accounts",
+          "INVALID_INPUT",
+          400
+        );
+      }
+      if (!user.passwordHash) {
+        throw new AuthError(
+          "Admin account is not properly configured",
+          "INVALID_CREDENTIALS",
+          403
+        );
+      }
+      const passwordMatch = await bcrypt.compare(input.password, user.passwordHash);
+      if (!passwordMatch) {
+        throw new AuthError("Invalid credentials", "INVALID_CREDENTIALS", 401);
+      }
+    } else if (!user) {
       const inferredName = deriveNameFromEmail(validation.normalizedEmail);
       const roleName = getRoleForDomain(validation.normalizedEmail);
       user = await this.repository.create({

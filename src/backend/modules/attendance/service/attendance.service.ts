@@ -15,6 +15,15 @@ export interface AttendanceView {
   notes: string | null;
 }
 
+export interface AttendanceHistoryItem extends AttendanceView {
+  scheduleTitle: string;
+  scheduleDescription: string | null;
+  scheduleStartsAt: string;
+  scheduleEndsAt: string;
+  scheduleStatus: string;
+  roomName: string | null;
+}
+
 export interface StudentAttendanceInput {
   studentEmail: string;
   studentName?: string;
@@ -113,5 +122,25 @@ export class AttendanceService {
   async getAttendancesBySchedule(scheduleId: string): Promise<AttendanceView[]> {
     const records = await this.repo.findBySchedule(scheduleId);
     return records.map(toView);
+  }
+
+  async getMyAttendanceHistory(userId: string): Promise<AttendanceHistoryItem[]> {
+    const records = await this.repo.findByMarker(userId);
+    return records.map((r) => ({
+      id: r.id,
+      scheduleId: r.scheduleId,
+      scheduleTitle: r.schedule.title,
+      scheduleDescription: r.schedule.description ?? null,
+      scheduleStartsAt: r.schedule.startsAt.toISOString(),
+      scheduleEndsAt: r.schedule.endsAt.toISOString(),
+      scheduleStatus: r.schedule.status,
+      roomName: r.schedule.room?.name ?? null,
+      studentEmail: r.studentEmail,
+      studentName: r.studentName ?? null,
+      status: r.status,
+      markedById: r.markedById,
+      markedAt: r.markedAt.toISOString(),
+      notes: r.notes ?? null,
+    }));
   }
 }

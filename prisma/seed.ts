@@ -1,8 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const adminPasswordHash = await bcrypt.hash("admin123", 10);
+
   const [adminRole, tutorRole] = await Promise.all([
     prisma.role.upsert({
       where: { name: "ADMIN" },
@@ -23,16 +26,18 @@ async function main() {
   ]);
 
   const adminUser = await prisma.user.upsert({
-    where: { email: "admin@ucn.cl" },
+    where: { email: "admin@ce.ucn.cl" },
     update: {
       firstName: "Admin",
       lastName: "UCN",
+      passwordHash: adminPasswordHash,
       isActive: true,
     },
     create: {
-      email: "admin@ucn.cl",
+      email: "admin@ce.ucn.cl",
       firstName: "Admin",
       lastName: "UCN",
+      passwordHash: adminPasswordHash,
       isActive: true,
     },
   });

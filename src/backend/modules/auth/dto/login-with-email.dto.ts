@@ -4,6 +4,7 @@ export interface LoginWithEmailInput {
   email: string;
   firstName?: string;
   lastName?: string;
+  password?: string;
 }
 
 function asOptionalTrimmedString(value: unknown): string | undefined {
@@ -31,5 +32,6 @@ export function parseLoginWithEmailInput(raw: unknown): LoginWithEmailInput {
     email,
     firstName: asOptionalTrimmedString(candidate.firstName),
     lastName: asOptionalTrimmedString(candidate.lastName),
+    password: asOptionalTrimmedString(candidate.password),
   };
 }

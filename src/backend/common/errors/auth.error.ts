@@ -13,7 +13,8 @@ export type AuthErrorCode =
   | "INVALID_TOKEN_AUD"
   | "EMAIL_NOT_VERIFIED"
   | "EMAIL_MISSING"
-  | "USER_NOT_FOUND";
+  | "USER_NOT_FOUND"
+  | "INVALID_CREDENTIALS";
 
 export class AuthError extends Error {
   public readonly code: AuthErrorCode;

@@ -6,6 +6,7 @@
 'use strict';
 
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const STATEMENTS = [
   // extensions
@@ -31,11 +32,12 @@ const STATEMENTS = [
     "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email")`,
-  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone"       TEXT`,
-  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bio"         TEXT`,
-  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "linkedinUrl" TEXT`,
-  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "firstName"   TEXT NOT NULL DEFAULT ''`,
-  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lastName"    TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone"        TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bio"          TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "linkedinUrl"  TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "firstName"    TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lastName"     TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "passwordHash" TEXT`,
 
   // roles
   `CREATE TABLE IF NOT EXISTS "roles" (
@@ -168,6 +170,27 @@ async function main() {
         }
       }
     }
+
+    // Seed admin@ce.ucn.cl si no existe
+    const existing = await prisma.$queryRaw`SELECT id FROM "users" WHERE "email" = 'admin@ce.ucn.cl' LIMIT 1`;
+    if (!existing || existing.length === 0) {
+      const hash = await bcrypt.hash('admin123', 10);
+      const uid = 'user_admin_seed';
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "users" ("id","email","firstName","lastName","passwordHash","isActive","createdAt","updatedAt")
+         VALUES ($1,'admin@ce.ucn.cl','Admin','UCN',$2,true,NOW(),NOW())
+         ON CONFLICT ("email") DO NOTHING`,
+        uid, hash
+      );
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "user_roles" ("id","userId","roleId","createdAt")
+         VALUES (gen_random_uuid()::text,$1,'role_admin',NOW())
+         ON CONFLICT ("userId","roleId") DO NOTHING`,
+        uid
+      );
+      console.log('[db-sync] Admin seed: admin@ce.ucn.cl creado.');
+    }
+
     console.log(`[db-sync] Sincronizacion completada: ${ok} OK, ${warns} advertencias.`);
   } finally {
     await prisma.$disconnect();
