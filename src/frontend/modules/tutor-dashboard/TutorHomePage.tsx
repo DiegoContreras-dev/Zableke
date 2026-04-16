@@ -106,9 +106,9 @@ export function TutorHomePage() {
         </div>
 
         {error ? (
-          <div className="mt-2.5 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="mt-2.5 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            <p>No fue posible recuperar tus bloques. Revisa la conexión e intenta de nuevo.</p>
+            <p>No se encontraron bloques asignados.</p>
           </div>
         ) : null}
       </header>

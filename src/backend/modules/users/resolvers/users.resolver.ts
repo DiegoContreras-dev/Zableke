@@ -1,4 +1,4 @@
-import { requireUser } from "@/backend/common/guards/role.guard";
+import { requireRole, requireUser } from "@/backend/common/guards/role.guard";
 import { UsersService } from "@/backend/modules/users/service/users.service";
 import type { GraphQLContext } from "@/graphql/context";
 
@@ -31,6 +31,7 @@ export const usersTypeDefs = `
 
   extend type Mutation {
     updateMyProfile(input: UpdateProfileInput!): UserProfile!
+    deleteUser(id: ID!): Boolean!
   }
 `;
 
@@ -49,6 +50,14 @@ export const usersResolvers = {
     ) => {
       const user = requireUser(context.currentUser);
       return usersService.updateMyProfile(user.id, args.input);
+    },
+    deleteUser: async (
+      _: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      requireRole(context.currentUser, ["ADMIN"]);
+      return usersService.deleteUser(args.id);
     },
   },
 };

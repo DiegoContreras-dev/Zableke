@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   BarChart3,
   CalendarDays,
@@ -10,9 +11,10 @@ import {
   Users,
   AlertTriangle,
   TrendingUp,
+  Trash2,
 } from "lucide-react";
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useMutation } from "@apollo/client/react";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
 
@@ -29,6 +31,12 @@ const ADMIN_OVERVIEW = gql`
       status
       startsAt
     }
+  }
+`;
+
+const DELETE_USER = gql`
+  mutation DeleteUser($id: ID!) {
+    deleteUser(id: $id)
   }
 `;
 
@@ -123,6 +131,18 @@ export function AdminHomePage() {
     allSchedules: Schedule[];
   }>(ADMIN_OVERVIEW, { fetchPolicy: "cache-and-network" });
 
+  const [deleteUser, { loading: deleting }] = useMutation(DELETE_USER, {
+    refetchQueries: ["AdminOverview"],
+  });
+
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!confirmId) return;
+    await deleteUser({ variables: { id: confirmId } });
+    setConfirmId(null);
+  };
+
   const users = data?.usersAccess ?? [];
   const schedules = data?.allSchedules ?? [];
 
@@ -142,6 +162,7 @@ export function AdminHomePage() {
   }).length;
 
   return (
+    <>
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -272,6 +293,9 @@ export function AdminHomePage() {
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Estado
                   </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Acción
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -308,6 +332,15 @@ export function AdminHomePage() {
                         {user.isActive ? "Activo" : "Inactivo"}
                       </span>
                     </td>
+                    <td className="px-5 py-3">
+                      <button
+                        onClick={() => setConfirmId(user.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -316,5 +349,36 @@ export function AdminHomePage() {
         )}
       </div>
     </div>
+
+    {/* Modal confirmación de eliminación */}
+    {confirmId && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="mx-4 w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="mb-1 flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            <h3 className="text-sm font-semibold">Eliminar usuario</h3>
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={() => setConfirmId(null)}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? "Eliminando…" : "Eliminar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

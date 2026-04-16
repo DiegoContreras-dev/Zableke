@@ -92,4 +92,13 @@ export class UsersService {
     const updated = await this.repo.updateProfile(userId, input);
     return toView(updated);
   }
+
+  async deleteUser(targetId: string): Promise<boolean> {
+    const user = await this.repo.findById(targetId);
+    if (!user) {
+      throw new AuthError("User not found", "USER_NOT_FOUND", 404);
+    }
+    await this.repo.deleteById(targetId);
+    return true;
+  }
 }

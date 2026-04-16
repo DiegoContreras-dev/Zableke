@@ -28,4 +28,8 @@ export class UsersRepository {
       include: { roles: { include: { role: true } } },
     });
   }
+
+  async deleteById(id: string): Promise<void> {
+    await prisma.user.delete({ where: { id } });
+  }
 }
