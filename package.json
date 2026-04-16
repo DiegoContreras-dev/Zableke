@@ -14,7 +14,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:seed:sessions": "node --env-file=.env --import tsx prisma/seed-sessions.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.7",
