@@ -2,21 +2,86 @@
 
 import { useState, useEffect } from "react";
 import { User, Mail, ShieldCheck, MapPin, Briefcase, Camera, Loader2, Save, AlertCircle, CheckCircle2, Phone, X, Upload, Palette } from "lucide-react";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
+
+// ─── GraphQL ─────────────────────────────────────────────────────────────────
+
+const ME_QUERY = gql`
+  query ProfileMe {
+    me {
+      id
+      email
+      firstName
+      lastName
+      phone
+      bio
+      linkedinUrl
+      roles
+    }
+  }
+`;
+
+const UPDATE_PROFILE = gql`
+  mutation UpdateMyProfile($input: UpdateProfileInput!) {
+    updateMyProfile(input: $input) {
+      id
+      phone
+      bio
+      linkedinUrl
+      firstName
+      lastName
+    }
+  }
+`;
 
 export function TutorProfilePage() {
+  const { data: meData, loading: meLoading } = useQuery<{
+    me: {
+      id: string;
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      phone: string | null;
+      bio: string | null;
+      linkedinUrl: string | null;
+      roles: string[];
+    };
+  }>(ME_QUERY, { fetchPolicy: "cache-and-network" });
+
+  const [updateMyProfile] = useMutation(UPDATE_PROFILE);
+
+  const me = meData?.me;
+  const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(" ") || "Tutor";
+  const initials = fullName
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
   const systemData = {
-    fullName: "Juan Pérez Sánchez",
-    email: "juan.perez@alumnos.ucn.cl",
-    role: "Tutor Académico",
+    fullName,
+    email: me?.email ?? "",
+    role: (me?.roles ?? []).includes("ADMIN") ? "Administrador" : "Tutor Académico",
     campus: "Campus Guayacán - Coquimbo",
     program: "Ingeniería en Computación e Informática",
   };
 
   const [formData, setFormData] = useState({
-    phone: "+56 9 8765 4321",
-    bio: "Apasionado por la enseñanza y el desarrollo de software. Dispuesto a ayudar a mis compañeros a alcanzar su máximo potencial académico.",
-    linkedin: "https://linkedin.com/in/juanperez",
+    phone: "",
+    bio: "",
+    linkedin: "",
   });
+
+  useEffect(() => {
+    if (me) {
+      setFormData({
+        phone: me.phone ?? "",
+        bio: me.bio ?? "",
+        linkedin: me.linkedinUrl ?? "",
+      });
+    }
+  }, [me]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -64,11 +129,24 @@ export function TutorProfilePage() {
     setIsSaving(true);
     setToast(null);
 
-    setTimeout(() => {
-      setIsSaving(false);
-      setToast({ type: 'success', message: '¡Perfil actualizado correctamente!' });
-      setTimeout(() => setToast(null), 3000);
-    }, 1000);
+    updateMyProfile({
+      variables: {
+        input: {
+          phone: formData.phone || undefined,
+          bio: formData.bio || undefined,
+          linkedinUrl: formData.linkedin || undefined,
+        },
+      },
+    })
+      .then(() => {
+        setToast({ type: 'success', message: '¡Perfil actualizado correctamente!' });
+        setTimeout(() => setToast(null), 3000);
+      })
+      .catch(() => {
+        setToast({ type: 'error', message: 'Error al guardar. Inténtalo de nuevo.' });
+        setTimeout(() => setToast(null), 3000);
+      })
+      .finally(() => setIsSaving(false));
   };
 
   const applyAvatar = () => {
@@ -148,7 +226,7 @@ export function TutorProfilePage() {
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-2xl font-semibold text-[#23415B]">JP</span>
+                    <span className="text-2xl font-semibold text-[#23415B]">{meLoading ? "…" : initials}</span>
                   )}
                   
                   <div className="absolute inset-0 bg-slate-900/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -332,7 +410,7 @@ export function TutorProfilePage() {
                 {temporaryAvatarUrl || avatarUrl ? (
                   <img src={temporaryAvatarUrl || avatarUrl || ''} alt="Preview" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-2xl font-semibold text-[#23415B]">JP</span>
+                  <span className="text-2xl font-semibold text-[#23415B]">{meLoading ? "…" : initials}</span>
                 )}
               </div>
               

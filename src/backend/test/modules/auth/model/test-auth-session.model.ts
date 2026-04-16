@@ -13,7 +13,8 @@ test("buildAuthSession returns ISO timestamps and user data", () => {
       isActive: true,
       roles: ["TUTOR"],
     },
-    60
+    "dummy.test.token",
+    3600
   );
 
   assert.equal(session.user.email, "tutor@ucn.cl");

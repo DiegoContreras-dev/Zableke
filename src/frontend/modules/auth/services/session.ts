@@ -1,50 +1,38 @@
-const SESSION_COOKIE_NAME = "zableke_tutor_session";
-const SESSION_COOKIE_VALUE = "active";
-const REMEMBER_ME_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_COOKIE_NAME = "zableke_session";
 
-function buildCookieAttributes(maxAgeSeconds?: number): string {
+function buildCookieAttributes(): string {
   const attributes = ["Path=/", "SameSite=Lax"];
-
   if (
     typeof window !== "undefined" &&
     window.location.protocol === "https:"
   ) {
     attributes.push("Secure");
   }
-
-  if (typeof maxAgeSeconds === "number") {
-    attributes.push(`Max-Age=${maxAgeSeconds}`);
-  }
-
+  // Sin Max-Age ni Expires → cookie de sesión, se borra al cerrar el navegador
   return attributes.join("; ");
 }
 
-export function createTutorSession(rememberMe: boolean): void {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  const maxAgeSeconds = rememberMe ? REMEMBER_ME_MAX_AGE_SECONDS : undefined;
-  document.cookie = `${SESSION_COOKIE_NAME}=${SESSION_COOKIE_VALUE}; ${buildCookieAttributes(maxAgeSeconds)}`;
+export function createTutorSession(token: string): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; ${buildCookieAttributes()}`;
 }
 
 export function clearTutorSession(): void {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.cookie = `${SESSION_COOKIE_NAME}=; ${buildCookieAttributes(0)}`;
+  if (typeof document === "undefined") return;
+  document.cookie = `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0`;
 }
 
 export function hasTutorSession(): boolean {
-  if (typeof document === "undefined") {
-    return false;
-  }
+  return getSessionToken() !== null;
+}
 
-  return document.cookie
+export function getSessionToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const pair = document.cookie
     .split(";")
-    .some(
-      (cookie) =>
-        cookie.trim() === `${SESSION_COOKIE_NAME}=${SESSION_COOKIE_VALUE}`,
-    );
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+  if (!pair) return null;
+  const value = pair.slice(SESSION_COOKIE_NAME.length + 1);
+  return value.length > 0 ? decodeURIComponent(value) : null;
 }

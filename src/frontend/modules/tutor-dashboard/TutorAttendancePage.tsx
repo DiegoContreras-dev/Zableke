@@ -1,20 +1,61 @@
-"use client";
+﻿"use client";
 
 import { type FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 
 import {
-  attendanceDefaults,
   attendanceStudents,
   type StudentAttendance,
 } from "./data";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { StudentAttendanceItem } from "./components/StudentAttendanceItem";
 
+// â”€â”€â”€ GraphQL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+const MY_SCHEDULES = gql`
+  query AttendanceMySchedules {
+    mySchedules {
+      id
+      title
+      description
+      roomName
+      startsAt
+      endsAt
+      status
+    }
+  }
+`;
+
+const RECORD_BULK_ATTENDANCE = gql`
+  mutation RecordBulkAttendance($input: BulkAttendanceInput!) {
+    recordBulkAttendance(input: $input) {
+      id
+      scheduleId
+      studentEmail
+      status
+    }
+  }
+`;
+
+interface ScheduleOption {
+  id: string;
+  title: string;
+  description: string | null;
+  roomName: string | null;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+}
+
+// â”€â”€â”€ Estado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 type SaveState = "idle" | "saving" | "success" | "error";
 
 type FormState = {
+  scheduleId: string;
   tutorName: string;
   sessionType: string;
   subject: string;
@@ -29,6 +70,20 @@ type FormState = {
 
 type FormErrors = Partial<Record<keyof FormState | "students", string>>;
 
+const FORM_DEFAULTS: FormState = {
+  scheduleId: "",
+  tutorName: "",
+  sessionType: "Programada",
+  subject: "",
+  section: "",
+  slot: "",
+  room: "",
+  modality: "Presencial",
+  date: "",
+  objectives: "",
+  appreciation: "",
+};
+
 const fieldClassName =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-150 focus:border-[#23415B] focus:ring-1 focus:ring-[#23415B]";
 
@@ -40,99 +95,110 @@ function RequiredLabel({ text }: { text: string }) {
   );
 }
 
-function getStatusMessage(state: SaveState) {
+function getStatusMessage(state: SaveState, savedCount: number) {
   if (state === "saving") {
     return {
       className: "border-blue-200 bg-blue-50 text-blue-800",
       icon: <LoaderCircle className="size-4 animate-spin" />,
-      text: "Guardando asistencia y registrando trazabilidad...",
+      text: "Guardando asistencia en la base de datos...",
     };
   }
-
   if (state === "success") {
     return {
       className: "border-green-200 bg-green-50 text-green-800",
       icon: <CheckCircle2 className="size-4" />,
-      text: "Asistencia guardada correctamente. Notificaciones enviadas.",
+      text: `Asistencia guardada correctamente (${savedCount} presentes registrados).`,
     };
   }
-
   if (state === "error") {
     return {
       className: "border-red-200 bg-red-50 text-red-800",
       icon: <AlertTriangle className="size-4" />,
-      text: "No se pudo guardar. Revisa los campos obligatorios e intenta de nuevo.",
+      text: "No se pudo guardar. Revisa los campos e intenta de nuevo.",
     };
   }
-
   return null;
 }
 
+function formatSlot(startsAt: string, endsAt: string): string {
+  const f = (iso: string) =>
+    new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+  return `${f(startsAt)} - ${f(endsAt)}`;
+}
+
+function formatDateInput(iso: string): string {
+  return new Date(iso).toISOString().split("T")[0] ?? "";
+}
+
+// â”€â”€â”€ Componente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 export function TutorAttendancePage() {
-  const [form, setForm] = useState<FormState>({
-    ...attendanceDefaults,
-    date: "",
-    objectives: "",
-    appreciation: "",
-  });
+  const [form, setForm] = useState<FormState>(FORM_DEFAULTS);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [savedCount, setSavedCount] = useState(0);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isStudentLoading, setIsStudentLoading] = useState(false);
-  const [forceSaveError, setForceSaveError] = useState(false);
 
   const selectedCount = selectedStudents.size;
+  const statusInfo = useMemo(
+    () => getStatusMessage(saveState, savedCount),
+    [saveState, savedCount]
+  );
 
-  const statusInfo = useMemo(() => getStatusMessage(saveState), [saveState]);
+  const { data: schedulesData, loading: schedulesLoading } = useQuery<{
+    mySchedules: ScheduleOption[];
+  }>(MY_SCHEDULES, { fetchPolicy: "cache-and-network" });
+
+  const [recordBulkAttendance] = useMutation(RECORD_BULK_ATTENDANCE);
+
+  const scheduleOptions = schedulesData?.mySchedules ?? [];
 
   const updateField = <T extends keyof FormState>(field: T, value: FormState[T]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
+  const handleScheduleSelect = (scheduleId: string) => {
+    const schedule = scheduleOptions.find((s) => s.id === scheduleId);
+    if (!schedule) {
+      updateField("scheduleId", "");
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      scheduleId: schedule.id,
+      subject: schedule.title,
+      section: schedule.description ?? prev.section,
+      room: schedule.roomName ?? prev.room,
+      slot: formatSlot(schedule.startsAt, schedule.endsAt),
+      date: formatDateInput(schedule.startsAt),
+    }));
+    setErrors({});
+  };
+
   const toggleStudent = (student: StudentAttendance) => {
     setSelectedStudents((prev) => {
       const next = new Set(prev);
-
-      if (next.has(student.id)) {
-        next.delete(student.id);
-      } else {
-        next.add(student.id);
-      }
-
+      if (next.has(student.id)) next.delete(student.id);
+      else next.add(student.id);
       return next;
     });
-
     setErrors((prev) => ({ ...prev, students: undefined }));
   };
 
-  const validate = () => {
+  const validate = (): boolean => {
     const nextErrors: FormErrors = {};
-
-    if (!form.date.trim()) {
-      nextErrors.date = "Debes indicar la fecha de realizacion.";
-    }
-
-    if (!form.objectives.trim()) {
-      nextErrors.objectives = "Describe los objetivos de aprendizaje.";
-    }
-
-    if (!form.appreciation.trim()) {
-      nextErrors.appreciation = "Incluye una apreciacion breve de la sesion.";
-    }
-
-    if (selectedStudents.size === 0) {
-      nextErrors.students = "Selecciona al menos un estudiante asistente.";
-    }
-
+    if (!form.scheduleId) nextErrors.scheduleId = "Selecciona una sesión.";
+    if (!form.date.trim()) nextErrors.date = "Debes indicar la fecha de realización.";
+    if (!form.objectives.trim()) nextErrors.objectives = "Describe los objetivos de aprendizaje.";
+    if (!form.appreciation.trim()) nextErrors.appreciation = "Incluye una apreciación breve.";
+    if (selectedStudents.size === 0) nextErrors.students = "Selecciona al menos un estudiante presente.";
     setErrors(nextErrors);
-
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (!validate()) {
       setSaveState("error");
       return;
@@ -140,14 +206,33 @@ export function TutorAttendancePage() {
 
     setSaveState("saving");
 
-    setTimeout(() => {
-      if (forceSaveError) {
-        setSaveState("error");
-        return;
-      }
+    const notes = [
+      form.objectives.trim() ? `Objetivos: ${form.objectives.trim()}` : "",
+      form.appreciation.trim() ? `Apreciación: ${form.appreciation.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
+    const attendances = attendanceStudents.map((student) => ({
+      studentEmail: student.email,
+      studentName: student.fullName,
+      status: selectedStudents.has(student.id) ? "PRESENT" : "ABSENT",
+      notes: notes || undefined,
+    }));
+
+    try {
+      const result = await recordBulkAttendance({
+        variables: {
+          input: { scheduleId: form.scheduleId, attendances },
+        },
+      });
+      const records = ((result.data as Record<string, unknown>)?.["recordBulkAttendance"] ?? []) as Array<{ status: string }>;
+      setSavedCount(records.filter((r) => r.status === "PRESENT").length);
       setSaveState("success");
-    }, 900);
+    } catch (err) {
+      console.error("Error al guardar asistencia:", err);
+      setSaveState("error");
+    }
   };
 
   return (
@@ -161,27 +246,6 @@ export function TutorAttendancePage() {
             <p className="mt-1 text-sm text-slate-500">
               Registro digital por bloque con validación obligatoria y trazabilidad.
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 hidden">
-            {/* hidden developer tools to simplify UI for the user */}
-            <button
-              type="button"
-              onClick={() => setIsStudentLoading((prev) => !prev)}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium transition-colors hover:bg-slate-50 hover:text-[#23415B]"
-            >
-              {isStudentLoading ? "Quitar carga" : "Simular carga"}
-            </button>
-
-            <label className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium">
-              <input
-                type="checkbox"
-                checked={forceSaveError}
-                onChange={(event) => setForceSaveError(event.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-[#23415B] focus:ring-[#23415B]"
-              />
-              Forzar error
-            </label>
           </div>
         </div>
 
@@ -198,24 +262,58 @@ export function TutorAttendancePage() {
       <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[1.05fr_1fr]">
         <form onSubmit={handleSubmit} className="min-h-0">
           <DashboardPanel
-            title="Datos de la sesion"
+            title="Datos de la sesión"
             subtitle="Campos obligatorios para respaldar el registro"
             className="flex h-full min-h-0 flex-col"
           >
             <div className="space-y-4 overflow-y-auto p-3 lg:p-4">
+
+              {/* Selector de sesión */}
+              <div>
+                <RequiredLabel text="Sesión a registrar" />
+                {schedulesLoading ? (
+                  <div className="h-9 w-full animate-pulse rounded-md bg-slate-100" />
+                ) : (
+                  <select
+                    value={form.scheduleId}
+                    onChange={(e) => handleScheduleSelect(e.target.value)}
+                    className={`${fieldClassName} ${errors.scheduleId ? "border-rose-400 ring-2 ring-rose-200" : ""}`}
+                  >
+                    <option value="">— Seleccionar sesión —</option>
+                    {scheduleOptions.map((s) => {
+                      const d = new Date(s.startsAt);
+                      const label = `${s.title} · ${d.toLocaleDateString("es-CL")} ${formatSlot(s.startsAt, s.endsAt)}`;
+                      return (
+                        <option key={s.id} value={s.id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+                {errors.scheduleId ? (
+                  <p className="mt-1 text-xs font-semibold text-rose-700">{errors.scheduleId}</p>
+                ) : null}
+                {!schedulesLoading && scheduleOptions.length === 0 ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    No tienes sesiones activas. Contacta a tu coordinador para crearlas.
+                  </p>
+                ) : null}
+              </div>
+
               <div>
                 <RequiredLabel text="Tutor:" />
                 <input
                   type="text"
                   readOnly
                   disabled
-                  value={form.tutorName}
+                  value={form.tutorName || "Tutor autenticado"}
                   className={`${fieldClassName} cursor-not-allowed bg-slate-50 font-medium text-slate-700`}
                 />
               </div>
 
               <div>
-                <RequiredLabel text="Tipo de sesion" />
+                <RequiredLabel text="Tipo de sesión" />
                 <select
                   value={form.sessionType}
                   onChange={(event) => updateField("sessionType", event.target.value)}
@@ -233,28 +331,25 @@ export function TutorAttendancePage() {
 
               <div>
                 <RequiredLabel text="Asignatura" />
-                <select
+                <input
+                  type="text"
                   value={form.subject}
-                  onChange={(event) => updateField("subject", event.target.value)}
+                  onChange={(e) => updateField("subject", e.target.value)}
+                  placeholder="Se rellena al seleccionar una sesión"
                   className={fieldClassName}
-                >
-                  <option>{attendanceDefaults.subject}</option>
-                </select>
+                />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <RequiredLabel text="Paralelo" />
-                  <select
+                  <input
+                    type="text"
                     value={form.section}
-                    onChange={(event) => updateField("section", event.target.value)}
+                    onChange={(e) => updateField("section", e.target.value)}
+                    placeholder="Ej: P1"
                     className={fieldClassName}
-                  >
-                    <option>P1</option>
-                    <option>P2</option>
-                    <option>P3</option>
-                    <option>P4</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <RequiredLabel text="Modalidad" />
@@ -265,7 +360,7 @@ export function TutorAttendancePage() {
                   >
                     <option>Presencial</option>
                     <option>Online</option>
-                    <option>Hibrida</option>
+                    <option>Híbrida</option>
                   </select>
                 </div>
               </div>
@@ -276,6 +371,7 @@ export function TutorAttendancePage() {
                   <input
                     value={form.slot}
                     onChange={(event) => updateField("slot", event.target.value)}
+                    placeholder="Ej: 10:20 - 11:50"
                     className={fieldClassName}
                   />
                 </div>
@@ -284,13 +380,14 @@ export function TutorAttendancePage() {
                   <input
                     value={form.room}
                     onChange={(event) => updateField("room", event.target.value)}
+                    placeholder="Ej: Lab 207"
                     className={fieldClassName}
                   />
                 </div>
               </div>
 
               <div>
-                <RequiredLabel text="Fecha realizacion tutoria" />
+                <RequiredLabel text="Fecha realización tutoría" />
                 <input
                   type="date"
                   value={form.date}
@@ -315,12 +412,12 @@ export function TutorAttendancePage() {
               </div>
 
               <div>
-                <RequiredLabel text="Breve apreciacion de la sesion" />
+                <RequiredLabel text="Breve apreciación de la sesión" />
                 <textarea
                   value={form.appreciation}
                   onChange={(event) => updateField("appreciation", event.target.value)}
                   rows={3}
-                  placeholder="Resumen de participacion y observaciones"
+                  placeholder="Resumen de participación y observaciones"
                   className={`${fieldClassName} ${errors.appreciation ? "border-rose-400 ring-2 ring-rose-200" : ""}`}
                 />
                 {errors.appreciation ? (
@@ -355,25 +452,14 @@ export function TutorAttendancePage() {
           className="flex min-h-0 flex-col"
         >
           <div className="space-y-2 overflow-y-auto p-4 bg-slate-50/50">
-            {isStudentLoading
-              ? Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={`student-skeleton-${index}`}
-                    className="h-[76px] animate-pulse rounded-md border border-slate-200 bg-slate-100"
-                  />
-                ))
-              : null}
-
-            {!isStudentLoading
-              ? attendanceStudents.map((student) => (
-                  <StudentAttendanceItem
-                    key={student.id}
-                    student={student}
-                    checked={selectedStudents.has(student.id)}
-                    onChange={() => toggleStudent(student)}
-                  />
-                ))
-              : null}
+            {attendanceStudents.map((student) => (
+              <StudentAttendanceItem
+                key={student.id}
+                student={student}
+                checked={selectedStudents.has(student.id)}
+                onChange={() => toggleStudent(student)}
+              />
+            ))}
           </div>
 
           <footer className="border-t border-slate-100 bg-white p-4 rounded-b-lg">

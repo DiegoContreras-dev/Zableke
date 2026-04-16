@@ -14,6 +14,7 @@ export const authTypeDefs = `
 
   type AuthSession {
     user: AuthUser!
+    token: String!
     issuedAt: String!
     expiresAt: String!
   }
@@ -26,6 +27,7 @@ export const authTypeDefs = `
 
   extend type Mutation {
     authenticateWithEmail(input: LoginWithEmailInput!): AuthSession!
+    authenticateWithGoogle(idToken: String!): AuthSession!
   }
 `;
 
@@ -35,5 +37,9 @@ export const authResolvers = {
       _: unknown,
       args: { input: unknown }
     ) => authService.authenticate(args.input),
+    authenticateWithGoogle: async (
+      _: unknown,
+      args: { idToken: string }
+    ) => authService.authenticateWithGoogle(args.idToken),
   },
 };
