@@ -4,6 +4,8 @@ export interface EnrollmentView {
   offeringId: string;
   studentEmail: string;
   studentName: string;
+  studentRut: string | null;
+  studentCareer: string | null;
   studentPhone: string | null;
   source: string;
   googleFormResponseId: string | null;

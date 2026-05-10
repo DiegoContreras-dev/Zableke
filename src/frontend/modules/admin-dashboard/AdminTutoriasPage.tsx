@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardList, ExternalLink, LoaderCircle, Plus, Search } from "lucide-react";
+import { AlertTriangle, ClipboardList, ExternalLink, LoaderCircle, Plus, Search, BookOpen, Clock, Users, RefreshCw } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 
@@ -42,10 +43,20 @@ const ADD_SLOT = gql`
 `;
 
 const GENERATE_FORM = gql`
-  mutation GenerateGlobalForm($semester: String) {
-    generateGoogleForm(semester: $semester) {
+  mutation GenerateGlobalForm($semester: String, $existingFormId: String!) {
+    generateGoogleForm(semester: $semester, existingFormId: $existingFormId) {
       formUrl
       formEditUrl
+    }
+  }
+`;
+
+const SYNC_FORM = gql`
+  mutation SyncForm($semester: String) {
+    syncFormResponses(semester: $semester) {
+      newEnrollments
+      skipped
+      errors
     }
   }
 `;
@@ -120,6 +131,9 @@ export function AdminTutoriasPage() {
   });
   const [addSlot] = useMutation(ADD_SLOT);
   const [generateForm, { loading: generatingForm }] = useMutation(GENERATE_FORM);
+  const [syncForm, { loading: syncingForm }] = useMutation(SYNC_FORM, {
+    refetchQueries: ["AdminOfferings"],
+  });
 
   const offerings = useMemo(() => data?.offerings ?? [], [data?.offerings]);
   const filteredOfferings = useMemo(() => {
@@ -130,6 +144,10 @@ export function AdminTutoriasPage() {
   const tutors = data?.tutorOptions ?? [];
   const totalEnrollments = useMemo(
     () => filteredOfferings.reduce((sum, offering) => sum + offering.enrollmentsCount, 0),
+    [filteredOfferings]
+  );
+  const totalSlots = useMemo(
+    () => filteredOfferings.reduce((sum, offering) => sum + offering.slotsCount, 0),
     [filteredOfferings]
   );
 
@@ -183,11 +201,39 @@ export function AdminTutoriasPage() {
   };
 
   const handleGenerateForm = async () => {
+    const existingFormId = window.prompt("Ingresa el ID del formulario vacío que creaste en Google Forms (puedes pegar la URL entera o solo el ID):");
+    if (!existingFormId) return;
+
+    // extract ID if they pasted a URL
+    let extractedId = existingFormId.trim();
+    if (extractedId.includes("/d/")) {
+      const match = extractedId.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) extractedId = match[1];
+    }
+
     setErrorMessage(null);
     setFormMessage(null);
-    const result = await generateForm({ variables: { semester } });
-    const formUrl = (result.data as { generateGoogleForm?: { formUrl?: string } } | undefined)?.generateGoogleForm?.formUrl;
-    setFormMessage(formUrl ?? "Formulario global generado.");
+    try {
+      const result = await generateForm({ variables: { semester, existingFormId: extractedId } });
+      const formUrl = (result.data as { generateGoogleForm?: { formUrl?: string } } | undefined)?.generateGoogleForm?.formUrl;
+      setFormMessage(formUrl ?? "Formulario global generado exitosamente.");
+    } catch (err: unknown) {
+      const gqlMsg = (err as { graphQLErrors?: { message: string }[] })?.graphQLErrors?.[0]?.message ?? (err instanceof Error ? err.message : null);
+      setErrorMessage(`Error al generar formulario: ${gqlMsg ?? "Desconocido"}`);
+    }
+  };
+
+  const handleGlobalSync = async () => {
+    setErrorMessage(null);
+    setFormMessage(null);
+    try {
+      const result = await syncForm({ variables: { semester } });
+      const sync = (result.data as { syncFormResponses?: { newEnrollments: number; skipped: number } } | undefined)?.syncFormResponses;
+      setFormMessage(sync ? `Sincronización global lista: ${sync.newEnrollments} nuevas, ${sync.skipped} omitidas.` : "Sincronización global lista.");
+    } catch (err: unknown) {
+      const gqlMsg = (err as { graphQLErrors?: { message: string }[] })?.graphQLErrors?.[0]?.message ?? (err instanceof Error ? err.message : null);
+      setErrorMessage(`Error al sincronizar: ${gqlMsg ?? "Desconocido"}`);
+    }
   };
 
   return (
@@ -207,6 +253,14 @@ export function AdminTutoriasPage() {
             className="h-10 rounded-md border border-slate-300 px-3 text-sm"
             aria-label="Semestre"
           />
+          <button
+            onClick={handleGlobalSync}
+            disabled={syncingForm}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncingForm ? "animate-spin" : ""}`} />
+            Sincronizar Respuestas
+          </button>
           <button
             onClick={handleGenerateForm}
             disabled={generatingForm}
@@ -244,74 +298,130 @@ export function AdminTutoriasPage() {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Tutorías publicables</h2>
-          <label className="relative w-full sm:w-80">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar por nombre"
-              className="h-9 w-full rounded-md border border-slate-300 pl-9 pr-3 text-sm outline-none focus:border-[#23415B] focus:ring-1 focus:ring-[#23415B]"
-            />
-          </label>
+      {/* Metrics Row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500">Total Tutorías</p>
+            <p className="text-2xl font-bold text-slate-900">{filteredOfferings.length}</p>
+          </div>
         </div>
-        {loading && !data ? (
-          <div className="space-y-3 p-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="h-12 animate-pulse rounded-md bg-slate-100" />
-            ))}
+        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+            <Clock className="h-6 w-6" />
           </div>
-        ) : filteredOfferings.length === 0 ? (
-          <div className="flex flex-col items-center justify-center px-4 py-14 text-center">
-            <ClipboardList className="mb-3 h-10 w-10 text-slate-300" />
-            <p className="text-sm font-medium text-slate-600">No hay tutorías que coincidan con la búsqueda.</p>
+          <div>
+            <p className="text-sm font-medium text-slate-500">Paralelos Abiertos</p>
+            <p className="text-2xl font-bold text-slate-900">{totalSlots}</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 text-left">Nombre</th>
-                  <th className="px-4 py-3 text-left">Horarios</th>
-                  <th className="px-4 py-3 text-left">Inscritos</th>
-                  <th className="px-4 py-3 text-left">Estado</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredOfferings.map((offering) => (
-                  <tr key={offering.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      <Link href={`/admin/tutorias/${offering.id}`} className="hover:text-[#23415B] hover:underline">
-                        {offering.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{offering.slotsCount}</td>
-                    <td className="px-4 py-3 text-slate-600">{offering.enrollmentsCount}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        offering.status === "OPEN" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {offering.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/admin/tutorias/${offering.id}`}
-                        className="inline-flex items-center rounded-md bg-[#23415B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a3146]"
-                      >
-                        Ver detalles
-                      </Link>
-                    </td>
-                  </tr>
+        </div>
+        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <Users className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500">Alumnos Inscritos</p>
+            <p className="text-2xl font-bold text-slate-900">{totalEnrollments}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Tutorías publicables</h2>
+              <label className="relative w-full sm:w-80">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar por nombre"
+                  className="h-9 w-full rounded-md border border-slate-300 pl-9 pr-3 text-sm outline-none focus:border-[#23415B] focus:ring-1 focus:ring-[#23415B]"
+                />
+              </label>
+            </div>
+            {loading && !data ? (
+              <div className="space-y-3 p-4">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-12 animate-pulse rounded-md bg-slate-100" />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </div>
+            ) : filteredOfferings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-4 py-14 text-center">
+                <ClipboardList className="mb-3 h-10 w-10 text-slate-300" />
+                <p className="text-sm font-medium text-slate-600">No hay tutorías que coincidan con la búsqueda.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Nombre</th>
+                      <th className="px-4 py-3 text-left">Paralelos</th>
+                      <th className="px-4 py-3 text-left">Inscritos</th>
+                      <th className="px-4 py-3 text-left">Estado</th>
+                      <th className="px-4 py-3 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredOfferings.map((offering) => (
+                      <tr key={offering.id} className="hover:bg-slate-50/70">
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          <Link href={`/admin/tutorias/${offering.id}`} className="hover:text-[#23415B] hover:underline">
+                            {offering.name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{offering.slotsCount}</td>
+                        <td className="px-4 py-3 text-slate-600">{offering.enrollmentsCount}</td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${offering.status === "OPEN" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                            }`}>
+                            {offering.status === "OPEN" ? "ABIERTA" : "CERRADA"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={`/admin/tutorias/${offering.id}`}
+                            className="inline-flex items-center rounded-md bg-[#23415B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a3146]"
+                          >
+                            Ver detalles
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="flex flex-col gap-5">
+          <section className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold text-slate-900">Demanda por Tutoría</h2>
+            {filteredOfferings.length === 0 ? (
+              <div className="flex h-48 items-center justify-center text-sm text-slate-400">
+                Sin datos suficientes
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={filteredOfferings} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="enrollmentsCount" name="Inscritos" fill="#23415B" radius={[4, 4, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
 
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

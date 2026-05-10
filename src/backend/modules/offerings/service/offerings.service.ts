@@ -25,7 +25,7 @@ import {
   type TutorOptionRecord,
 } from "@/backend/modules/offerings/repository/offerings.repository";
 import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
-import { buildTutoringFormRequests } from "@/backend/modules/offerings/google-forms/form-builder";
+
 import { ServiceAccountFormsClient } from "@/backend/modules/offerings/google-forms/forms-client";
 import { syncResponses } from "@/backend/modules/offerings/google-forms/response-sync";
 
@@ -85,6 +85,8 @@ function toEnrollmentView(enrollment: EnrollmentRecord): EnrollmentView {
     offeringId: enrollment.offeringId,
     studentEmail: enrollment.studentEmail,
     studentName: enrollment.studentName,
+    studentRut: enrollment.studentRut,
+    studentCareer: enrollment.studentCareer,
     studentPhone: enrollment.studentPhone,
     source: enrollment.source,
     googleFormResponseId: enrollment.googleFormResponseId,
@@ -216,6 +218,11 @@ export class OfferingsService {
     return toEnrollmentView(enrollment);
   }
 
+  async removeEnrollment(enrollmentId: string): Promise<boolean> {
+    await this.repo.deleteEnrollment(enrollmentId);
+    return true;
+  }
+
   async getEnrolledStudents(slotId: string, user: CurrentUserLike): Promise<EnrollmentView[]> {
     const slot = await this.repo.findSlotById(slotId);
     if (!slot) throw new AuthError("Slot not found", "RESOURCE_NOT_FOUND", 404);
@@ -263,33 +270,60 @@ export class OfferingsService {
       students: enrollments.map((enrollment) => ({
         studentEmail: enrollment.studentEmail,
         studentName: enrollment.studentName,
+        studentCareer: enrollment.studentCareer,
         studentPhone: enrollment.studentPhone,
         status: attendanceByEmail.get(enrollment.studentEmail.toLowerCase()) ?? "PENDING",
       })),
     };
   }
 
-  async generateGoogleForm(semester?: string): Promise<GoogleFormLinkView> {
+  async generateGoogleForm(semester?: string, existingFormId?: string): Promise<GoogleFormLinkView> {
     const targetSemester = semester ?? getCurrentSemester();
     const offerings = await this.repo.findOfferingsBySemester(targetSemester);
     const openOfferings = offerings.filter((offering) => offering.status === "OPEN" && offering.slots.length > 0);
     if (openOfferings.length === 0) {
       throw new AuthError("There are no open offerings with slots for this semester", "INVALID_STATE", 400);
     }
+    if (!existingFormId) {
+      throw new AuthError("Se requiere el ID de un formulario existente vacío", "INVALID_INPUT", 400);
+    }
 
     const client = new ServiceAccountFormsClient();
-    const form = await client.createForm(`Tutorías Zableke ${targetSemester}`);
-    const built = buildTutoringFormRequests(openOfferings);
-    await client.batchUpdateForm(form.formId, built.requests);
+    const { buildPhase1Requests, buildPhase2Requests } = await import("@/backend/modules/offerings/google-forms/form-builder");
+
+    const phase1Requests = buildPhase1Requests(openOfferings);
+    const phase1Result = await client.batchUpdateForm(existingFormId, phase1Requests);
+
+    // phase1Result.replies contains the responses.
+    // Index 0: updateFormInfo
+    // Index 1,2,3,4,5: text questions
+    // Index 6: Main Selection page break
+    // Index 7...: Offering page breaks
+    const replies = (phase1Result.replies as any[]) || [];
+    const offeringSectionIds: string[] = [];
+    
+    // We expect N offering sections starting at index 7.
+    for (let i = 0; i < openOfferings.length; i++) {
+       const reply = replies[7 + i];
+       const itemId = reply?.createItem?.itemId;
+       if (!itemId) throw new AuthError("Failed to read section ID from Google Forms API", "GOOGLE_VERIFY_ERROR", 502);
+       offeringSectionIds.push(itemId);
+    }
+
+    const phase2 = buildPhase2Requests(openOfferings, offeringSectionIds);
+    await client.batchUpdateForm(existingFormId, phase2.requests);
+
+    const formUrl = `https://docs.google.com/forms/d/${existingFormId}/viewform`;
+    const formEditUrl = `https://docs.google.com/forms/d/${existingFormId}/edit`;
 
     await Promise.all(
-      built.slotLabels.map((item) => this.repo.updateSlotGoogleLabel(item.slotId, item.label))
+      phase2.slotLabels.map((item) => this.repo.updateSlotGoogleLabel(item.slotId, item.label))
     );
     const link = await this.repo.upsertGoogleFormLink({
       semester: targetSemester,
-      formId: form.formId,
-      formUrl: form.formUrl,
-      formEditUrl: form.formEditUrl,
+      formId: existingFormId,
+      formUrl: formUrl,
+      formEditUrl: formEditUrl,
     });
 
     return {
@@ -323,6 +357,8 @@ export class OfferingsService {
       slotId: slot.id,
       studentEmail: input.studentEmail,
       studentName: input.studentName,
+      studentRut: input.studentRut,
+      studentCareer: input.studentCareer,
       studentPhone: input.studentPhone,
       source: input.source,
       googleFormResponseId: input.googleFormResponseId,

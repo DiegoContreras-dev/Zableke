@@ -184,6 +184,8 @@ export class OfferingsRepository {
     slotId: string;
     studentEmail: string;
     studentName: string;
+    studentRut?: string;
+    studentCareer?: string;
     studentPhone?: string;
     source: EnrollmentSource;
     googleFormResponseId?: string;
@@ -196,6 +198,8 @@ export class OfferingsRepository {
     slotId: string;
     studentEmail: string;
     studentName: string;
+    studentRut?: string;
+    studentCareer?: string;
     studentPhone?: string;
     source: EnrollmentSource;
     googleFormResponseId?: string;
@@ -213,6 +217,10 @@ export class OfferingsRepository {
 
   async countEnrollmentsBySlot(slotId: string): Promise<number> {
     return this.db.enrollment.count({ where: { slotId } });
+  }
+
+  async deleteEnrollment(id: string): Promise<void> {
+    await this.db.enrollment.delete({ where: { id } });
   }
 
   async hasProcessedResponse(responseId: string): Promise<boolean> {

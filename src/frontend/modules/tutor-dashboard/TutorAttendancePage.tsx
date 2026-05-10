@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -35,6 +35,7 @@ const ATTENDANCE_FOR_SLOT = gql`
       students {
         studentEmail
         studentName
+        studentCareer
         studentPhone
         status
       }
@@ -67,11 +68,10 @@ interface SlotOption {
 interface SlotAttendanceStudent {
   studentEmail: string;
   studentName: string;
+  studentCareer: string | null;
   studentPhone: string | null;
   status: string;
 }
-
-// â”€â”€â”€ Estado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
@@ -151,7 +151,7 @@ function slotToStudent(student: SlotAttendanceStudent): StudentAttendance {
     fullName: student.studentName,
     email: student.studentEmail,
     phone: student.studentPhone ?? "",
-    program: "Inscrito en tutoría",
+    program: student.studentCareer || "Carrera no especificada",
     historicalAttendance: 0,
     attendedClasses: 0,
     totalClasses: 0,
@@ -326,7 +326,7 @@ export function TutorAttendancePage() {
 
         {statusInfo ? (
           <div
-            className={`mt-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${statusInfo.className}`}
+            className={`mt-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium animate-fade-in-row ${statusInfo.className}`}
           >
             {statusInfo.icon}
             <p>{statusInfo.text}</p>
@@ -339,7 +339,7 @@ export function TutorAttendancePage() {
           <DashboardPanel
             title="Datos de la sesión"
             subtitle="Campos obligatorios para respaldar el registro"
-            className="flex h-full min-h-0 flex-col"
+            className="flex h-full min-h-0 flex-col animate-fade-in-row"
           >
             <div className="space-y-4 overflow-y-auto p-3 lg:p-4">
 
@@ -517,38 +517,33 @@ export function TutorAttendancePage() {
                 </Link>
               </div>
             </div>
-          </DashboardPanel>
-        </form>
+        </DashboardPanel>
+      </form>
 
-        <DashboardPanel
-          title="Estudiantes del bloque"
-          subtitle={`Total: ${attendanceStudents.length} | Presentes: ${selectedCount}`}
-          className="flex min-h-0 flex-col"
-        >
-          <div className="space-y-2 overflow-y-auto p-4 bg-slate-50/50">
-            {attendanceLoading ? (
-              <div className="h-16 animate-pulse rounded-lg bg-slate-100" />
-            ) : null}
-            {!attendanceLoading && attendanceStudents.map((student) => (
+      <DashboardPanel
+        title="Estudiantes del bloque"
+        subtitle={`Total: ${attendanceStudents.length} | Presentes: ${selectedCount}`}
+        className="flex min-h-0 flex-col animate-fade-in-row"
+        style={{ animationDelay: "90ms" }}
+      >
+        <div className="space-y-2 overflow-y-auto p-4 bg-slate-50/50">
+          {attendanceLoading ? (
+            <div className="h-16 animate-pulse rounded-lg bg-slate-100" />
+          ) : null}
+          {!attendanceLoading && attendanceStudents.map((student, index) => (
+            <div
+              key={student.id}
+              className="animate-fade-in-row"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
               <StudentAttendanceItem
-                key={student.id}
                 student={student}
                 checked={selectedStudents.has(student.id)}
                 onChange={() => toggleStudent(student)}
               />
-            ))}
-          </div>
-
-          <footer className="border-t border-slate-100 bg-white p-4 rounded-b-lg">
-            {errors.students ? (
-              <p className="mb-2 text-xs font-semibold text-rose-700">{errors.students}</p>
-            ) : null}
-            <p className="text-xs text-slate-500">
-              Marca solo estudiantes presentes. El registro será auditado.
-            </p>
-          </footer>
-        </DashboardPanel>
-      </section>
+            </div>
+          ))}
+        </section>
     </div>
   );
 }

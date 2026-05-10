@@ -20,6 +20,7 @@ export interface GoogleFormCreateResult {
 export interface GoogleFormsClient {
   createForm(title: string): Promise<GoogleFormCreateResult>;
   batchUpdateForm(formId: string, requests: unknown[]): Promise<Record<string, unknown>>;
+  getForm(formId: string): Promise<Record<string, unknown>>;
   getResponses(formId: string): Promise<Record<string, unknown>[]>;
 }
 
@@ -91,6 +92,12 @@ export class ServiceAccountFormsClient implements GoogleFormsClient {
     });
   }
 
+  async getForm(formId: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(`${FORMS_URL}/${formId}`, {
+      method: "GET",
+    });
+  }
+
   async getResponses(formId: string): Promise<Record<string, unknown>[]> {
     const json = await this.request<Record<string, unknown>>(`${FORMS_URL}/${formId}/responses`, {
       method: "GET",
@@ -109,7 +116,9 @@ export class ServiceAccountFormsClient implements GoogleFormsClient {
       },
     });
     if (!response.ok) {
-      throw new AuthError(`Google Forms request failed (${response.status})`, "GOOGLE_VERIFY_ERROR", 502);
+      const errorText = await response.text().catch(() => "Unknown error");
+      console.error("Google API Error:", errorText);
+      throw new AuthError(`Google Forms API error (${response.status}): ${errorText}`, "GOOGLE_VERIFY_ERROR", 502);
     }
     return (await response.json()) as T;
   }

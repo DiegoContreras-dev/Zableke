@@ -160,6 +160,8 @@ model Enrollment {
   slotId               String
   studentEmail         String
   studentName          String
+  studentRut           String?
+  studentCareer        String?
   studentPhone         String?
   source               EnrollmentSource @default(MANUAL)
   googleFormResponseId String?

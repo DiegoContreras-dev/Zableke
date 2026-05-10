@@ -39,6 +39,8 @@ export const offeringsTypeDefs = `
     offeringId: String!
     studentEmail: String!
     studentName: String!
+    studentRut: String
+    studentCareer: String
     studentPhone: String
     source: String!
     googleFormResponseId: String
@@ -59,6 +61,7 @@ export const offeringsTypeDefs = `
   type StudentAttendanceStatus {
     studentEmail: String!
     studentName: String!
+    studentCareer: String
     studentPhone: String
     status: String!
   }
@@ -99,6 +102,8 @@ export const offeringsTypeDefs = `
     slotId: ID!
     studentEmail: String!
     studentName: String!
+    studentRut: String
+    studentCareer: String
     studentPhone: String
     source: String
   }
@@ -120,7 +125,8 @@ export const offeringsTypeDefs = `
     addSlotToOffering(input: AddSlotInput!): TutoringSlot!
     removeSlot(slotId: ID!): Boolean!
     createEnrollment(input: CreateEnrollmentInput!): EnrollmentRecord!
-    generateGoogleForm(semester: String): GoogleFormResult!
+    removeEnrollment(enrollmentId: ID!): Boolean!
+    generateGoogleForm(semester: String, existingFormId: String!): GoogleFormResult!
     syncFormResponses(semester: String): SyncResult!
   }
 `;
@@ -214,13 +220,18 @@ export const offeringsResolvers = {
       return offeringsService.createEnrollment(args.input);
     },
 
+    removeEnrollment: async (_: unknown, args: { enrollmentId: string }, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.removeEnrollment(args.enrollmentId);
+    },
+
     generateGoogleForm: async (
       _: unknown,
-      args: { semester?: string },
+      args: { semester?: string; existingFormId: string },
       context: GraphQLContext
     ) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.generateGoogleForm(args.semester);
+      return offeringsService.generateGoogleForm(args.semester, args.existingFormId);
     },
 
     syncFormResponses: async (

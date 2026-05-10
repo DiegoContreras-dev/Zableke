@@ -55,6 +55,17 @@ export async function syncResponses(params: {
     });
   });
 
+  const formDef = await params.client.getForm(link.formId);
+  const items = (formDef.items as any[]) || [];
+  const questionTitles = new Map<string, string>();
+  
+  items.forEach(item => {
+    const qId = item.questionItem?.question?.questionId;
+    if (qId && typeof item.title === "string") {
+      questionTitles.set(qId, item.title);
+    }
+  });
+
   const responses = await params.client.getResponses(link.formId);
   let newEnrollments = 0;
   let skipped = 0;
@@ -68,10 +79,37 @@ export async function syncResponses(params: {
     }
 
     const parsed = parseAnswers(response);
-    const values = parsed.map((answer) => answer.value);
-    const studentName = values[0] ?? "";
-    const studentEmail = (values[1] ?? "").toLowerCase();
-    const studentPhone = values[2] ?? "";
+    
+    let studentName = "";
+    let studentRut = "";
+    let studentEmail = "";
+    let studentCareer = "";
+    let studentPhone = "";
+    const selectedSlots: string[] = [];
+
+    for (const answer of parsed) {
+      const title = questionTitles.get(answer.questionId) || "";
+      const lowerTitle = title.toLowerCase();
+      
+      if (lowerTitle.includes("nombre")) {
+        studentName = answer.value;
+      } else if (lowerTitle.includes("rut")) {
+        studentRut = answer.value;
+      } else if (lowerTitle.includes("correo")) {
+        studentEmail = answer.value.toLowerCase();
+      } else if (lowerTitle.includes("carrera")) {
+        studentCareer = answer.value;
+      } else if (lowerTitle.includes("teléfono") || lowerTitle.includes("telefono")) {
+        studentPhone = answer.value;
+      } else if (title === "¿A qué tutoría deseas inscribirte?") {
+        // Just the section router, ignore
+      } else {
+        // It's likely a slot selection
+        if (answer.value !== "No me interesa") {
+          selectedSlots.push(answer.value);
+        }
+      }
+    }
 
     if (!studentName || !studentEmail.includes("@")) {
       errors.push(`Respuesta ${responseId}: datos personales incompletos`);
@@ -79,12 +117,9 @@ export async function syncResponses(params: {
       continue;
     }
 
-    for (const answer of parsed.slice(3)) {
-      if (answer.value === "No me interesa") continue;
-      const slot = slotByLabel.get(answer.value);
+    for (const slotLabel of selectedSlots) {
+      const slot = slotByLabel.get(slotLabel);
       if (!slot) {
-        errors.push(`Respuesta ${responseId}: opción sin slot asociado (${answer.value})`);
-        skipped += 1;
         continue;
       }
 
@@ -100,6 +135,8 @@ export async function syncResponses(params: {
           slotId: slot.id,
           studentEmail,
           studentName,
+          studentRut,
+          studentCareer,
           studentPhone,
           source: EnrollmentSource.GOOGLE_FORM,
           googleFormResponseId: responseId,

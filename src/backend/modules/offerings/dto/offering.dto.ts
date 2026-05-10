@@ -28,6 +28,8 @@ export interface CreateEnrollmentInput {
   slotId: string;
   studentEmail: string;
   studentName: string;
+  studentRut?: string;
+  studentCareer?: string;
   studentPhone?: string;
   source: EnrollmentSource;
   googleFormResponseId?: string;
@@ -133,11 +135,42 @@ export function parseCreateEnrollmentInput(raw: unknown): CreateEnrollmentInput 
     throw new AuthError("studentEmail is invalid", "INVALID_INPUT", 400);
   }
 
+  let finalPhone = typeof obj.studentPhone === "string" ? obj.studentPhone.trim() || undefined : undefined;
+  if (finalPhone) {
+    let cleanPhone = finalPhone.replace(/[^\d+]/g, '');
+    if (cleanPhone.startsWith('9') && cleanPhone.length === 9) {
+      cleanPhone = '+56' + cleanPhone;
+    } else if (cleanPhone.startsWith('569') && cleanPhone.length === 11) {
+      cleanPhone = '+' + cleanPhone;
+    }
+    if (cleanPhone.startsWith('+569') && cleanPhone.length === 12) {
+      finalPhone = `+56 9 ${cleanPhone.slice(4, 8)} ${cleanPhone.slice(8)}`;
+    } else {
+      finalPhone = cleanPhone;
+    }
+  }
+
+  let finalRut = typeof obj.studentRut === "string" ? obj.studentRut.trim() || undefined : undefined;
+  if (finalRut) {
+    let cleanRut = finalRut.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (cleanRut.length >= 2) {
+      const dv = cleanRut.slice(-1);
+      const numberStr = cleanRut.slice(0, -1);
+      // Format number with dots
+      const formattedNumber = numberStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      finalRut = `${formattedNumber}-${dv}`;
+    } else {
+      finalRut = cleanRut;
+    }
+  }
+
   return {
     slotId: readRequiredString(obj, "slotId"),
     studentEmail,
     studentName: readRequiredString(obj, "studentName"),
-    studentPhone: typeof obj.studentPhone === "string" ? obj.studentPhone.trim() || undefined : undefined,
+    studentRut: finalRut,
+    studentCareer: typeof obj.studentCareer === "string" ? obj.studentCareer.trim() || undefined : undefined,
+    studentPhone: finalPhone,
     source: typeof obj.source === "string" && obj.source.toUpperCase() === "GOOGLE_FORM" ? EnrollmentSource.GOOGLE_FORM : EnrollmentSource.MANUAL,
     googleFormResponseId: typeof obj.googleFormResponseId === "string" ? obj.googleFormResponseId.trim() || undefined : undefined,
   };
