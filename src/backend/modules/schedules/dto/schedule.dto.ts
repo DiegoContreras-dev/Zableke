@@ -2,7 +2,8 @@ import { AuthError } from "@/backend/common/errors/auth.error";
 
 export interface CreateScheduleInput {
   tutorId: string;
-  roomId: string;
+  roomId?: string;
+  roomName?: string;
   title: string;
   description?: string;
   startsAt: string; // ISO 8601
@@ -12,6 +13,7 @@ export interface CreateScheduleInput {
 export interface UpdateScheduleInput {
   id: string;
   roomId?: string;
+  roomName?: string;
   title?: string;
   description?: string;
   startsAt?: string;
@@ -34,12 +36,13 @@ export function parseCreateScheduleInput(raw: unknown): CreateScheduleInput {
 
   const tutorId = typeof c.tutorId === "string" ? c.tutorId.trim() : "";
   const roomId = typeof c.roomId === "string" ? c.roomId.trim() : "";
+  const roomName = typeof c.roomName === "string" ? c.roomName.trim() : "";
   const title = typeof c.title === "string" ? c.title.trim() : "";
   const startsAt = typeof c.startsAt === "string" ? c.startsAt.trim() : "";
   const endsAt = typeof c.endsAt === "string" ? c.endsAt.trim() : "";
 
   if (!tutorId) throw new AuthError("tutorId is required", "INVALID_INPUT", 400);
-  if (!roomId) throw new AuthError("roomId is required", "INVALID_INPUT", 400);
+  if (!roomId && !roomName) throw new AuthError("roomId or roomName is required", "INVALID_INPUT", 400);
   if (!title) throw new AuthError("title is required", "INVALID_INPUT", 400);
   if (!startsAt) throw new AuthError("startsAt is required", "INVALID_INPUT", 400);
   if (!endsAt) throw new AuthError("endsAt is required", "INVALID_INPUT", 400);
@@ -53,7 +56,8 @@ export function parseCreateScheduleInput(raw: unknown): CreateScheduleInput {
 
   return {
     tutorId,
-    roomId,
+    roomId: roomId || undefined,
+    roomName: roomName || undefined,
     title,
     description: typeof c.description === "string" ? c.description.trim() || undefined : undefined,
     startsAt: start.toISOString(),
@@ -72,6 +76,7 @@ export function parseUpdateScheduleInput(raw: unknown): UpdateScheduleInput {
   const result: UpdateScheduleInput = { id };
 
   if (typeof c.roomId === "string") result.roomId = c.roomId.trim();
+  if (typeof c.roomName === "string") result.roomName = c.roomName.trim() || undefined;
   if (typeof c.title === "string") result.title = c.title.trim();
   if (typeof c.description === "string") result.description = c.description.trim() || undefined;
 

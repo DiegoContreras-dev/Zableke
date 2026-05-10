@@ -8,7 +8,7 @@ export const schedulesTypeDefs = `
   type Schedule {
     id: ID!
     tutorId: String!
-    roomId: String!
+    roomId: String
     roomName: String
     createdById: String!
     title: String!
@@ -22,7 +22,8 @@ export const schedulesTypeDefs = `
 
   input CreateScheduleInput {
     tutorId: String!
-    roomId: String!
+    roomId: String
+    roomName: String
     title: String!
     description: String
     startsAt: String!
@@ -32,6 +33,7 @@ export const schedulesTypeDefs = `
   input UpdateScheduleInput {
     id: ID!
     roomId: String
+    roomName: String
     title: String
     description: String
     startsAt: String

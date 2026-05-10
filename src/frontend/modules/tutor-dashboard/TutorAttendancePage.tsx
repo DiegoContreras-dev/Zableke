@@ -1,30 +1,43 @@
 ﻿"use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 
-import {
-  attendanceStudents,
-  type StudentAttendance,
-} from "./data";
+import { type StudentAttendance } from "./data";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { StudentAttendanceItem } from "./components/StudentAttendanceItem";
 
 // â”€â”€â”€ GraphQL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const MY_SCHEDULES = gql`
-  query AttendanceMySchedules {
-    mySchedules {
+const MY_TUTORING_SLOTS = gql`
+  query AttendanceMyTutoringSlots {
+    myTutoringSlots {
       id
-      title
-      description
+      offeringName
       roomName
-      startsAt
-      endsAt
-      status
+      dayOfWeek
+      startTime
+      endTime
+      enrolledCount
+      maxCapacity
+    }
+  }
+`;
+
+const ATTENDANCE_FOR_SLOT = gql`
+  query AttendanceForSlot($slotId: ID!, $date: String!) {
+    attendanceForSlot(slotId: $slotId, date: $date) {
+      scheduleId
+      students {
+        studentEmail
+        studentName
+        studentPhone
+        status
+      }
     }
   }
 `;
@@ -40,13 +53,21 @@ const RECORD_BULK_ATTENDANCE = gql`
   }
 `;
 
-interface ScheduleOption {
+interface SlotOption {
   id: string;
-  title: string;
-  description: string | null;
+  offeringName: string;
   roomName: string | null;
-  startsAt: string;
-  endsAt: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  enrolledCount: number;
+  maxCapacity: number;
+}
+
+interface SlotAttendanceStudent {
+  studentEmail: string;
+  studentName: string;
+  studentPhone: string | null;
   status: string;
 }
 
@@ -120,21 +141,30 @@ function getStatusMessage(state: SaveState, savedCount: number) {
   return null;
 }
 
-function formatSlot(startsAt: string, endsAt: string): string {
-  const f = (iso: string) =>
-    new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
-  return `${f(startsAt)} - ${f(endsAt)}`;
+function todayDateInput(): string {
+  return new Date().toISOString().split("T")[0] ?? "";
 }
 
-function formatDateInput(iso: string): string {
-  return new Date(iso).toISOString().split("T")[0] ?? "";
+function slotToStudent(student: SlotAttendanceStudent): StudentAttendance {
+  return {
+    id: student.studentEmail,
+    fullName: student.studentName,
+    email: student.studentEmail,
+    phone: student.studentPhone ?? "",
+    program: "Inscrito en tutoría",
+    historicalAttendance: 0,
+    attendedClasses: 0,
+    totalClasses: 0,
+  };
 }
 
 // â”€â”€â”€ Componente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function TutorAttendancePage() {
+  const searchParams = useSearchParams();
   const [form, setForm] = useState<FormState>(FORM_DEFAULTS);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [generatedScheduleId, setGeneratedScheduleId] = useState<string>("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savedCount, setSavedCount] = useState(0);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -145,33 +175,77 @@ export function TutorAttendancePage() {
     [saveState, savedCount]
   );
 
-  const { data: schedulesData, loading: schedulesLoading } = useQuery<{
-    mySchedules: ScheduleOption[];
-  }>(MY_SCHEDULES, { fetchPolicy: "cache-and-network" });
+  const { data: slotsData, loading: schedulesLoading } = useQuery<{
+    myTutoringSlots: SlotOption[];
+  }>(MY_TUTORING_SLOTS, { fetchPolicy: "cache-and-network" });
+
+  const { data: attendanceData, loading: attendanceLoading } = useQuery<{
+    attendanceForSlot: { scheduleId: string; students: SlotAttendanceStudent[] };
+  }>(ATTENDANCE_FOR_SLOT, {
+    variables: { slotId: form.scheduleId, date: form.date || todayDateInput() },
+    skip: !form.scheduleId,
+    fetchPolicy: "cache-and-network",
+  });
 
   const [recordBulkAttendance] = useMutation(RECORD_BULK_ATTENDANCE);
 
-  const scheduleOptions = schedulesData?.mySchedules ?? [];
+  const scheduleOptions = useMemo(() => slotsData?.myTutoringSlots ?? [], [slotsData?.myTutoringSlots]);
+  const attendanceStudents = useMemo(
+    () => (attendanceData?.attendanceForSlot.students ?? []).map(slotToStudent),
+    [attendanceData]
+  );
+
+  useEffect(() => {
+    const slotId = searchParams.get("slot");
+    const date = searchParams.get("date") ?? todayDateInput();
+    if (!slotId || scheduleOptions.length === 0) return;
+    const slot = scheduleOptions.find((item) => item.id === slotId);
+    if (!slot) return;
+    const timeoutId = window.setTimeout(() => {
+      setForm((prev) => ({
+        ...prev,
+        scheduleId: slot.id,
+        subject: slot.offeringName,
+        section: `${slot.enrolledCount}/${slot.maxCapacity} inscritos`,
+        room: slot.roomName ?? "",
+        slot: `${slot.startTime} - ${slot.endTime}`,
+        date,
+      }));
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [scheduleOptions, searchParams]);
+
+  useEffect(() => {
+    const present = attendanceData?.attendanceForSlot.students
+      .filter((student) => student.status === "PRESENT")
+      .map((student) => student.studentEmail);
+    const scheduleId = attendanceData?.attendanceForSlot.scheduleId;
+    const timeoutId = window.setTimeout(() => {
+      if (present) setSelectedStudents(new Set(present));
+      if (scheduleId) setGeneratedScheduleId(scheduleId);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [attendanceData]);
 
   const updateField = <T extends keyof FormState>(field: T, value: FormState[T]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const handleScheduleSelect = (scheduleId: string) => {
-    const schedule = scheduleOptions.find((s) => s.id === scheduleId);
-    if (!schedule) {
+  const handleScheduleSelect = (slotId: string) => {
+    const slot = scheduleOptions.find((s) => s.id === slotId);
+    if (!slot) {
       updateField("scheduleId", "");
       return;
     }
     setForm((prev) => ({
       ...prev,
-      scheduleId: schedule.id,
-      subject: schedule.title,
-      section: schedule.description ?? prev.section,
-      room: schedule.roomName ?? prev.room,
-      slot: formatSlot(schedule.startsAt, schedule.endsAt),
-      date: formatDateInput(schedule.startsAt),
+      scheduleId: slot.id,
+      subject: slot.offeringName,
+      section: `${slot.enrolledCount}/${slot.maxCapacity} inscritos`,
+      room: slot.roomName ?? prev.room,
+      slot: `${slot.startTime} - ${slot.endTime}`,
+      date: prev.date || todayDateInput(),
     }));
     setErrors({});
   };
@@ -188,11 +262,12 @@ export function TutorAttendancePage() {
 
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
-    if (!form.scheduleId) nextErrors.scheduleId = "Selecciona una sesión.";
+    if (!form.scheduleId) nextErrors.scheduleId = "Selecciona una tutoría.";
+    if (form.scheduleId && !generatedScheduleId) nextErrors.scheduleId = "Espera a que se carguen los inscritos.";
     if (!form.date.trim()) nextErrors.date = "Debes indicar la fecha de realización.";
     if (!form.objectives.trim()) nextErrors.objectives = "Describe los objetivos de aprendizaje.";
     if (!form.appreciation.trim()) nextErrors.appreciation = "Incluye una apreciación breve.";
-    if (selectedStudents.size === 0) nextErrors.students = "Selecciona al menos un estudiante presente.";
+    if (attendanceStudents.length === 0) nextErrors.students = "Este horario no tiene estudiantes inscritos.";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -223,7 +298,7 @@ export function TutorAttendancePage() {
     try {
       const result = await recordBulkAttendance({
         variables: {
-          input: { scheduleId: form.scheduleId, attendances },
+          input: { scheduleId: generatedScheduleId || form.scheduleId, attendances },
         },
       });
       const records = ((result.data as Record<string, unknown>)?.["recordBulkAttendance"] ?? []) as Array<{ status: string }>;
@@ -279,10 +354,9 @@ export function TutorAttendancePage() {
                     onChange={(e) => handleScheduleSelect(e.target.value)}
                     className={`${fieldClassName} ${errors.scheduleId ? "border-rose-400 ring-2 ring-rose-200" : ""}`}
                   >
-                    <option value="">— Seleccionar sesión —</option>
+                    <option value="">— Seleccionar tutoría —</option>
                     {scheduleOptions.map((s) => {
-                      const d = new Date(s.startsAt);
-                      const label = `${s.title} · ${d.toLocaleDateString("es-CL")} ${formatSlot(s.startsAt, s.endsAt)}`;
+                      const label = `${s.offeringName} · ${s.dayOfWeek} ${s.startTime}-${s.endTime}`;
                       return (
                         <option key={s.id} value={s.id}>
                           {label}
@@ -296,7 +370,7 @@ export function TutorAttendancePage() {
                 ) : null}
                 {!schedulesLoading && scheduleOptions.length === 0 ? (
                   <p className="mt-1 text-xs text-slate-500">
-                    No tienes sesiones activas. Contacta a tu coordinador para crearlas.
+                    No tienes tutorías activas. Contacta a tu coordinador para crearlas.
                   </p>
                 ) : null}
               </div>
@@ -452,7 +526,10 @@ export function TutorAttendancePage() {
           className="flex min-h-0 flex-col"
         >
           <div className="space-y-2 overflow-y-auto p-4 bg-slate-50/50">
-            {attendanceStudents.map((student) => (
+            {attendanceLoading ? (
+              <div className="h-16 animate-pulse rounded-lg bg-slate-100" />
+            ) : null}
+            {!attendanceLoading && attendanceStudents.map((student) => (
               <StudentAttendanceItem
                 key={student.id}
                 student={student}

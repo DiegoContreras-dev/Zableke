@@ -8,6 +8,7 @@ export const RBAC_PERMISSIONS = [
   "READ_ALL_SCHEDULES",
   "WRITE_ALL_SCHEDULES",
   "MANAGE_TUTORS",
+  "MANAGE_OFFERINGS",
   "VIEW_AUDIT_LOGS",
 ] as const;
 
@@ -25,6 +26,7 @@ export const ROLE_PERMISSIONS: Record<SystemRole, readonly RbacPermission[]> = {
     "READ_ALL_SCHEDULES",
     "WRITE_ALL_SCHEDULES",
     "MANAGE_TUTORS",
+    "MANAGE_OFFERINGS",
     "VIEW_AUDIT_LOGS",
   ],
   TUTOR: ["READ_OWN_SCHEDULES", "WRITE_OWN_SCHEDULES"],

@@ -29,6 +29,7 @@ const mainNavItems: ReadonlyArray<{
 }> = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/tutores", label: "Tutores", icon: Users },
+  { href: "/admin/tutorias", label: "Tutorías", icon: ClipboardList },
   { href: "/admin/sesiones", label: "Sesiones", icon: CalendarDays },
   { href: "/admin/reportes", label: "Reportes", icon: BarChart3 },
   { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },

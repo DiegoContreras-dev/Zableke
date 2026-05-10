@@ -134,7 +134,7 @@ export class AttendanceService {
       scheduleStartsAt: r.schedule.startsAt.toISOString(),
       scheduleEndsAt: r.schedule.endsAt.toISOString(),
       scheduleStatus: r.schedule.status,
-      roomName: r.schedule.room?.name ?? null,
+      roomName: r.schedule.roomName ?? r.schedule.room?.name ?? null,
       studentEmail: r.studentEmail,
       studentName: r.studentName ?? null,
       status: r.status,

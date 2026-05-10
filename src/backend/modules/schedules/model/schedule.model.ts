@@ -1,7 +1,7 @@
 export interface ScheduleView {
   id: string;
   tutorId: string;
-  roomId: string;
+  roomId: string | null;
   roomName: string | null;
   createdById: string;
   title: string;

@@ -10,7 +10,7 @@ type ScheduleConflictRecord = Prisma.ScheduleGetPayload<Record<string, never>>;
 
 export interface ConflictCheckParams {
   tutorId: string;
-  roomId: string;
+  roomId?: string | null;
   startsAt: Date;
   endsAt: Date;
   excludeId?: string; // schedule to exclude when updating
@@ -65,7 +65,7 @@ export class SchedulesRepository {
 
     const [tutorConflict, roomConflict] = await Promise.all([
       this.db.schedule.findFirst({ where: { ...baseWhere, tutorId } }),
-      this.db.schedule.findFirst({ where: { ...baseWhere, roomId } }),
+      roomId ? this.db.schedule.findFirst({ where: { ...baseWhere, roomId } }) : Promise.resolve(null),
     ]);
 
     return { tutorConflict, roomConflict };
@@ -73,7 +73,8 @@ export class SchedulesRepository {
 
   async create(data: {
     tutorId: string;
-    roomId: string;
+    roomId?: string;
+    roomName?: string;
     createdById: string;
     title: string;
     description?: string;
@@ -86,7 +87,8 @@ export class SchedulesRepository {
   async update(
     id: string,
     data: Partial<{
-      roomId: string;
+      roomId?: string | null;
+      roomName?: string | null;
       title: string;
       description: string | null;
       startsAt: Date;

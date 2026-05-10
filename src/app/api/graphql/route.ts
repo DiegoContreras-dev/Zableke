@@ -7,6 +7,7 @@ import { rolesResolvers, rolesTypeDefs } from "@/backend/modules/roles/resolvers
 import { schedulesResolvers, schedulesTypeDefs } from "@/backend/modules/schedules/resolvers/schedules.resolver";
 import { usersResolvers, usersTypeDefs } from "@/backend/modules/users/resolvers/users.resolver";
 import { attendanceResolvers, attendanceTypeDefs } from "@/backend/modules/attendance/resolvers/attendance.resolver";
+import { offeringsResolvers, offeringsTypeDefs } from "@/backend/modules/offerings/resolvers/offerings.resolver";
 import { createContext, type GraphQLContext } from "@/graphql/context";
 
 const typeDefs = `
@@ -23,6 +24,7 @@ const typeDefs = `
   ${schedulesTypeDefs}
   ${usersTypeDefs}
   ${attendanceTypeDefs}
+  ${offeringsTypeDefs}
 `;
 
 const resolvers = {
@@ -32,6 +34,7 @@ const resolvers = {
     ...schedulesResolvers.Query,
     ...usersResolvers.Query,
     ...attendanceResolvers.Query,
+    ...offeringsResolvers.Query,
   },
   Mutation: {
     ...authResolvers.Mutation,
@@ -39,6 +42,7 @@ const resolvers = {
     ...schedulesResolvers.Mutation,
     ...usersResolvers.Mutation,
     ...attendanceResolvers.Mutation,
+    ...offeringsResolvers.Mutation,
   },
 };
 

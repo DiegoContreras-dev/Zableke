@@ -39,12 +39,12 @@ export function SessionRow({ session }: SessionRowProps) {
       </div>
 
       <div className="mt-2.5 flex items-center justify-end sm:h-[36px]">
-        {session.status !== "pendiente" ? (
+        {session.attendanceHref ? (
           <Link
-            href={`/tutor/asistencia?session=${session.id}`}
+            href={session.attendanceHref}
             className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#1a3146] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#23415B] sm:h-full sm:w-auto"
           >
-            Rellenar asistencia
+            Registrar asistencia
           </Link>
         ) : (
           <span className="w-full text-right text-xs font-medium italic text-slate-500">Habilitado al momento de la sesión</span>

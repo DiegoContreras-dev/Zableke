@@ -12,6 +12,7 @@ export interface AttendanceWithSchedule extends AttendanceRecord {
     endsAt: Date;
     status: string;
     room: { name: string } | null;
+    roomName: string | null;
   };
 }
 
@@ -77,6 +78,7 @@ export class AttendanceRepository {
             startsAt: true,
             endsAt: true,
             status: true,
+            roomName: true,
             room: { select: { name: true } },
           },
         },

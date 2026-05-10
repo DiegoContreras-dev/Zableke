@@ -2,6 +2,7 @@ export type SessionStatus = "pendiente" | "en-curso" | "cerrada";
 
 export type TodaySession = {
   id: string;
+  attendanceHref?: string;
   course: string;
   section: string;
   room: string;

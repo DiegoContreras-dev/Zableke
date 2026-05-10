@@ -8,12 +8,12 @@ import {
 import type { ScheduleView } from "@/backend/modules/schedules/model/schedule.model";
 import { SchedulesRepository } from "@/backend/modules/schedules/repository/schedules.repository";
 
-function toView(r: { id: string; tutorId: string; roomId: string; room?: { name: string; location?: string | null } | null; createdById: string; title: string; description: string | null; startsAt: Date; endsAt: Date; status: string; createdAt: Date; updatedAt: Date }): ScheduleView {
+function toView(r: { id: string; tutorId: string; roomId: string | null; roomName?: string | null; room?: { name: string; location?: string | null } | null; createdById: string; title: string; description: string | null; startsAt: Date; endsAt: Date; status: string; createdAt: Date; updatedAt: Date }): ScheduleView {
   return {
     id: r.id,
     tutorId: r.tutorId,
     roomId: r.roomId,
-    roomName: r.room?.name ?? null,
+    roomName: r.roomName ?? r.room?.name ?? null,
     createdById: r.createdById,
     title: r.title,
     description: r.description,
@@ -132,6 +132,7 @@ export class SchedulesService {
 
     const updated = await this.repo.update(input.id, {
       ...(input.roomId !== undefined ? { roomId: input.roomId } : {}),
+      ...(input.roomName !== undefined ? { roomName: input.roomName ?? null } : {}),
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.description !== undefined ? { description: input.description ?? null } : {}),
       ...(input.startsAt !== undefined ? { startsAt } : {}),

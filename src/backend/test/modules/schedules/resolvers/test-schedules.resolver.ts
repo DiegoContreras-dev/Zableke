@@ -31,7 +31,8 @@ test("schedulesTypeDefs define inputs CreateScheduleInput y UpdateScheduleInput"
   assert.ok(schedulesTypeDefs.includes("input CreateScheduleInput"));
   assert.ok(schedulesTypeDefs.includes("input UpdateScheduleInput"));
   assert.ok(schedulesTypeDefs.includes("tutorId: String!"));
-  assert.ok(schedulesTypeDefs.includes("roomId: String!"));
+  assert.ok(schedulesTypeDefs.includes("roomId: String"));
+  assert.ok(schedulesTypeDefs.includes("roomName: String"));
   assert.ok(schedulesTypeDefs.includes("title: String!"));
   assert.ok(schedulesTypeDefs.includes("startsAt: String!"));
   assert.ok(schedulesTypeDefs.includes("endsAt: String!"));

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
@@ -8,49 +9,64 @@ import { DashboardPanel } from "./components/DashboardPanel";
 import { SessionRow } from "./components/SessionRow";
 import type { TodaySession } from "./data";
 
-const MY_SCHEDULES = gql`
-  query MySchedules {
-    mySchedules {
+const MY_TUTORING_SLOTS = gql`
+  query MyTutoringSlots {
+    myTutoringSlots {
       id
-      title
-      description
+      offeringName
       roomName
-      startsAt
-      endsAt
-      status
+      dayOfWeek
+      startTime
+      endTime
+      enrolledCount
+      maxCapacity
     }
   }
 `;
 
-interface ScheduleItem {
+interface TutoringSlotItem {
   id: string;
-  title: string;
-  description: string | null;
+  offeringName: string;
   roomName: string | null;
-  startsAt: string;
-  endsAt: string;
-  status: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  enrolledCount: number;
+  maxCapacity: number;
 }
 
-/** Convierte un Schedule de la API al tipo TodaySession que usa SessionRow */
-function toTodaySession(s: ScheduleItem): TodaySession {
-  const starts = new Date(s.startsAt);
-  const ends = new Date(s.endsAt);
-  const fmt = (d: Date) =>
-    d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+const dayByIndex = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+function todayDateParam(): string {
+  return new Date().toISOString().split("T")[0] ?? "";
+}
+
+function slotStatus(slot: TutoringSlotItem): TodaySession["status"] {
+  const now = new Date();
+  const today = todayDateParam();
+  const starts = new Date(`${today}T${slot.startTime}:00`);
+  const ends = new Date(`${today}T${slot.endTime}:00`);
+  if (now >= ends) return "cerrada";
+  if (now >= starts) return "en-curso";
+  return "pendiente";
+}
+
+function toTodaySession(s: TutoringSlotItem): TodaySession {
+  const date = todayDateParam();
   return {
     id: s.id,
-    course: s.title,
-    section: s.description ?? "",
+    attendanceHref: `/tutor/asistencia?slot=${s.id}&date=${date}`,
+    course: s.offeringName,
+    section: `${s.enrolledCount}/${s.maxCapacity} inscritos`,
     room: s.roomName ?? "–",
     modality: "Presencial",
-    slot: `${fmt(starts)} - ${fmt(ends)}`,
-    status: "pendiente",
+    slot: `${s.startTime} - ${s.endTime}`,
+    status: slotStatus(s),
   };
 }
 
 export function TutorHomePage() {
-  const { data, loading, error } = useQuery<{ mySchedules: ScheduleItem[] }>(MY_SCHEDULES, {
+  const { data, loading, error } = useQuery<{ myTutoringSlots: TutoringSlotItem[] }>(MY_TUTORING_SLOTS, {
     fetchPolicy: "cache-and-network",
   });
 
@@ -59,21 +75,15 @@ export function TutorHomePage() {
   }, []);
 
   const sessions = useMemo(() => {
-    if (!data?.mySchedules) return [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return data.mySchedules
-      .filter((s) => {
-        const d = new Date(s.startsAt);
-        return d >= today && d < tomorrow;
-      })
+    if (!data?.myTutoringSlots) return [];
+    const today = dayByIndex[new Date().getDay()];
+    return data.myTutoringSlots
+      .filter((s) => s.dayOfWeek === today)
       .slice(0, 2)
       .map(toTodaySession);
   }, [data]);
 
-  const totalSchedules = data?.mySchedules?.length ?? 0;
+  const totalSchedules = data?.myTutoringSlots?.length ?? 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-x-hidden lg:gap-4.5">
@@ -147,9 +157,9 @@ export function TutorHomePage() {
                 ? `Tienes ${totalSchedules} tutoría(s) activas en tu calendario.`
                 : "No tienes tutorías programadas actualmente."}
             </p>
-            <a href="/tutor/asistencia" className="mt-2.5 text-sm font-medium text-amber-800 hover:text-amber-900 underline underline-offset-2 inline-block">
+            <Link href="/tutor/asistencia" className="mt-2.5 text-sm font-medium text-amber-800 hover:text-amber-900 underline underline-offset-2 inline-block">
               Ir a registrar asistencia
-            </a>
+            </Link>
           </div>
         </div>
 
