@@ -3,7 +3,7 @@
 ## Resumen
 
 El proyecto está en fase MVP con backend funcional para las épicas 2 y 3.
-La base técnica está operativa (Next.js, GraphQL, Prisma, Docker, tests backend, workflow CI de tests).
+La base técnica está operativa (Next.js, GraphQL, Prisma, Docker/Podman, tests backend, workflow CI de tests).
 
 ## Estado real del repositorio
 
@@ -14,7 +14,7 @@ La base técnica está operativa (Next.js, GraphQL, Prisma, Docker, tests backen
 - Endpoint GraphQL operativo en `src/app/api/graphql/route.ts`.
 - Contexto GraphQL activo en `src/graphql/context.ts`.
 - Cliente Prisma activo en `src/infrastructure/prisma/client.ts`.
-- Docker Compose operativo con servicios `app` y `db`.
+- `compose.yaml` operativo con servicios `app` y `db` (compatible con Docker y Podman).
 - Estructura frontend separada en `src/front`.
 - Estructura backend activa en `src/backend` por módulos y capas.
 - Auth institucional backend implementado y testeado.
@@ -40,7 +40,7 @@ La base técnica está operativa (Next.js, GraphQL, Prisma, Docker, tests backen
 2. Proyecto unificado (sin separación física de app frontend/backend en runtime).
 3. Estructura de trabajo: `src/front` para frontend y `src/backend` para backend en desarrollo.
 4. Persistencia: Prisma + PostgreSQL.
-5. Contenerización: Docker Compose para app y base de datos (imágenes Alpine).
+5. Contenerización: `compose.yaml` compatible con Docker y Podman para app y base de datos (imágenes Alpine).
 
 ## Riesgos actuales
 

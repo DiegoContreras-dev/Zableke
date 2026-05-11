@@ -49,7 +49,7 @@ zableke/
 │       ├── backup.sh               # Backup de BD
 │       └── restore.sh              # Restauración de BD
 │
-├── docker-compose.yml
+├── compose.yaml
 ├── .env
 ├── package.json                    # npm
 └── .gitignore

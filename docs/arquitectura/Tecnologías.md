@@ -9,7 +9,7 @@
 - **ORM**: Prisma
 - **Base de datos**: PostgreSQL
 - **Gestor de paquetes**: npm
-- **Contenedores**: Docker (con Docker Compose)
+- **Contenedores**: Docker / Podman (con `compose.yaml` — Compose Spec estándar)
 - **Control de versiones**: Git
 
 ## Estado del stack
@@ -19,7 +19,7 @@
 - Next.js + React + TypeScript
 - GraphQL con `@apollo/server` y `@as-integrations/next`
 - Prisma + PostgreSQL
-- Docker Compose (app + db)
+- `compose.yaml` compatible con Docker y Podman (app + db)
 - ESLint
 - Node test runner (`node:test`) para backend
 

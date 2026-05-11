@@ -21,24 +21,32 @@ npm run dev
 
 Servidor local: http://localhost:3000
 
-## Docker
+## Contenedores (Docker / Podman)
+
+Funciona con `docker compose` y `podman compose` (ambos reconocen `compose.yaml` automáticamente).
 
 Levantar con build:
 
 ```bash
 docker compose up --build
+# o
+podman compose up --build
 ```
 
 Levantar en segundo plano:
 
 ```bash
 docker compose up -d
+# o
+podman compose up -d
 ```
 
 Detener servicios:
 
 ```bash
 docker compose down
+# o
+podman compose down
 ```
 
 ## Scripts disponibles
