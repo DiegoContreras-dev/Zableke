@@ -1,0 +1,50 @@
+{
+  "name": "zableke",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:backend": "node --import tsx --test $(find src/backend/test -type f -name 'test-*.ts' ! -path 'src/backend/test/integration/*' | sort)",
+    "test:backend:integration": "npm run db:push && node --env-file=.env --import tsx --test $(find src/backend/test/integration -type f -name 'test-*.ts' | sort)",
+    "test:backend:all": "npm run db:push && node --env-file=.env --import tsx --test $(find src/backend/test -type f -name 'test-*.ts' | sort)",
+    "db:check": "node --env-file=.env --import tsx src/backend/scripts/db-check.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:seed:sessions": "node --env-file=.env --import tsx prisma/seed-sessions.ts"
+  },
+  "dependencies": {
+    "@apollo/client": "^4.1.7",
+    "@apollo/server": "^5.5.0",
+    "@as-integrations/next": "^4.1.0",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "graphql": "^16.13.2",
+    "jose": "^6.2.2",
+    "lucide-react": "^1.8.0",
+    "next": "^16.2.3",
+    "prisma": "^6.19.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.19.17",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "node --import tsx prisma/seed.ts"
+  }
+}

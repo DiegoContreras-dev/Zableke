@@ -1,67 +1,79 @@
 # Arquitectura del Proyecto
 
-Base: arquitectura por capas + modular por dominio, pensada para crecer sin perder orden.
+Base: arquitectura por capas + modular por dominio, en un unico proyecto Next.js con GraphQL (Apollo Server) como API.
 
-## Front (Next.js + React + TS)
+## Estructura del Proyecto
 
-- App/Front/app/
-- App/Front/app/(public)/
-- App/Front/app/(dashboard)/
-- App/Front/app/api/ (solo rutas necesarias del frontend)
-- App/Front/modules/
-- App/Front/modules/auth/
-- App/Front/modules/users/
-- App/Front/modules/roles/
-- App/Front/modules/schedules/
-- App/Front/modules/attendance/
-- App/Front/modules/notifications/
-- App/Front/components/ui/ (componentes reutilizables globales)
-- App/Front/components/shared/ (componentes de negocio compartidos)
-- App/Front/styles/ (tailwind, globals, tokens)
-- App/Front/lib/
-- App/Front/lib/http/ (cliente API)
-- App/Front/lib/validators/ (zod schemas)
-- App/Front/lib/utils/
+```
+zableke/
+├── src/
+│   ├── app/                        # Next.js App Router
+│   │   ├── (public)/               # Páginas públicas (login, landing)
+│   │   ├── (dashboard)/            # Páginas protegidas (panel principal)
+│   │   ├── api/
+│   │   │   └── graphql/
+│   │   │       └── route.ts        # Apollo Server endpoint
+│   │   └── layout.tsx
+│   │
+│   ├── front/                      # Todo el avance del frontend
+│   │   ├── components/
+│   │   │   ├── ui/
+│   │   │   └── shared/
+│   │   ├── modules/                # auth, users, roles, schedules, etc.
+│   │   └── lib/                    # apollo-client, validators, utils
+│   │
+│   ├── backend/                    # Backend por modulos y capas
+│   │   ├── common/
+│   │   ├── config/
+│   │   ├── infrastructure/
+│   │   ├── modules/
+│   │   ├── scripts/
+│   │   └── test/
+│   │
+│   ├── graphql/                    # Contexto GraphQL
+│   │   └── context.ts
+│   │
+│   └── infrastructure/             # Prisma usado por API
+│       └── prisma/
+│
+├── styles/                         # Tailwind, globals, tokens
+│
+├── prisma/
+│   ├── schema.prisma               # Esquema de la BD
+│   ├── migrations/                 # Migraciones versionadas
+│   └── seed.ts                     # Datos iniciales
+│
+├── db/
+│   └── scripts/
+│       ├── init.sh                 # Inicialización del contenedor PG
+│       ├── backup.sh               # Backup de BD
+│       └── restore.sh              # Restauración de BD
+│
+├── compose.yaml
+├── .env
+├── package.json                    # npm
+└── .gitignore
+```
 
-Regla Front:
-- Cada modulo en modules/ incluye: components, hooks, services, types.
+## Reglas del Backend (src/backend/)
 
-## Back (API + Logica de negocio)
+- El backend se implementa en `src/backend/` por dominio.
+- Cada modulo sigue capas internas: `resolvers -> service -> repository -> model`.
+- `src/graphql/context.ts` y `src/infrastructure/prisma` son piezas activas del backend runtime.
 
-- App/Back/src/
-- App/Back/src/modules/
-- App/Back/src/modules/auth/
-- App/Back/src/modules/users/
-- App/Back/src/modules/roles/
-- App/Back/src/modules/schedules/
-- App/Back/src/modules/attendance/
-- App/Back/src/modules/notifications/
-- App/Back/src/modules/audit/
-- App/Back/src/common/
-- App/Back/src/common/middlewares/ (auth, rbac, error handler)
-- App/Back/src/common/validators/ (zod)
-- App/Back/src/common/utils/
-- App/Back/src/config/ (logger, app config)
-- App/Back/src/infrastructure/
-- App/Back/src/infrastructure/prisma/
-- App/Back/src/infrastructure/email/
+## Reglas del Frontend (src/front/modules/)
 
-Regla Back:
-- Cada modulo sigue capas internas: controller -> service -> repository -> model.
-- La validacion de reglas criticas (RBAC, conflicto de horario) vive en service, no en frontend.
+- Cada módulo incluye: `components/`, `hooks/`, `services/`, `types/`.
+- Los services del frontend usan Apollo Client para queries/mutations.
+- Validación de formularios con Zod + React Hook Form.
 
-## BD (PostgreSQL + Prisma)
+## Regla BD (prisma/)
 
-- App/BD/prisma/
-- App/BD/prisma/schema.prisma
-- App/BD/prisma/migrations/
-- App/BD/prisma/seed.ts
-- App/BD/db/scripts/
-- App/BD/db/scripts/init.sh
-- App/BD/db/scripts/backup.sh
-- App/BD/db/scripts/restore.sh
+- Toda modificación estructural va por migraciones Prisma versionadas.
+- El esquema vive en `prisma/schema.prisma` en la raíz del proyecto.
 
-Entidades base sugeridas:
+## Entidades base
+
 - users
 - roles
 - user_roles
@@ -72,26 +84,23 @@ Entidades base sugeridas:
 - notifications
 - audit_logs
 
-Regla BD:
-- Toda modificacion estructural va por migraciones Prisma versionadas.
+## CI/Calidad
 
-## CI/Calidad (GitHub Actions + SonarCloud)
-
-- .github/workflows/ci.yml
-- .env (en la raiz del proyecto)
-- docker-compose.yml (en la raiz del proyecto)
-- .gitignore (en la raiz del proyecto)
-- Checks obligatorios en PR:
-- lint
-- typecheck
-- jest
-- playwright (segun estrategia de rama)
-- sonarcloud quality gate
+- Workflow actual: `.github/workflows/backend-tests.yml`
+- Estrategia actual:
+  - tests backend (unitario/servicio) en workflow
+  - tests de integracion por comando dedicado
 
 ## Convenciones de largo plazo
 
-- Un modulo por dominio de negocio, no por tipo tecnico.
-- Evitar dependencias cruzadas entre modulos.
-- Compartidos solo en common (back) y components/shared o lib (front).
-- Toda nueva feature debe incluir test y validaciones.
-- El archivo .env se mantiene en raiz y no dentro de carpetas del backend.
+- Un módulo por dominio de negocio, no por tipo técnico.
+- Evitar dependencias cruzadas entre módulos.
+- Compartidos frontend en `src/front/components/shared` o `src/front/lib`.
+- Toda nueva feature de backend debe incluir test unitario o de integracion.
+- El archivo `.env` se mantiene en raíz y no dentro de subcarpetas.
+
+## Estado funcional actual
+
+- Epica 2 backend: implementada (auth institucional).
+- Epica 3 backend: implementada (RBAC y gestion de roles).
+- Epica 4: pendiente (horarios y prevencion de conflictos).

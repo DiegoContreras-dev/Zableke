@@ -1,0 +1,65 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: zableke-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zableke-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zableke}:${POSTGRES_PASSWORD:-zableke_dev}@db:5432/${POSTGRES_DB:-zableke}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    init: true
+    expose:
+      - "3000"
+    command:
+      - sh
+      - -c
+      - |
+        echo "========================================"
+        echo "Sincronizando esquema con la BD..."
+        node db-sync.cjs
+        echo "Zableke app iniciada"
+        echo "Login:    http://localhost:3000/login"
+        echo "GraphQL:  http://localhost:3000/api/graphql"
+        echo "========================================"
+        exec node server.js
+
+  db:
+    image: postgres:16-alpine
+    container_name: zableke-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-zableke}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zableke_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-zableke}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/scripts/init.sh:/docker-entrypoint-initdb.d/init.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zableke}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

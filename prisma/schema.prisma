@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  firstName         String
+  lastName          String
+  phone             String?
+  bio               String?
+  linkedinUrl       String?
+  passwordHash      String?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  markedAttendances Attendance[]
+  auditLogs         AuditLog[]
+  createdSchedules  Schedule[]         @relation("ScheduleCreatedBy")
+  createdOfferings  TutoringOffering[] @relation("OfferingCreatedBy")
+  tutorProfile      Tutor?
+  roles             UserRole[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Tutor {
+  id            String         @id @default(cuid())
+  userId        String         @unique
+  department    String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  schedules     Schedule[]
+  tutoringSlots TutoringSlot[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tutors")
+}
+
+model Room {
+  id        String     @id @default(cuid())
+  name      String
+  location  String?
+  capacity  Int?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  schedules Schedule[]
+
+  @@unique([name, location])
+  @@map("rooms")
+}
+
+model Schedule {
+  id             String         @id @default(cuid())
+  tutorId        String
+  roomId         String?
+  roomName       String?
+  createdById    String
+  tutoringSlotId String?
+  title          String
+  description    String?
+  startsAt       DateTime
+  endsAt         DateTime
+  status         ScheduleStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  attendances    Attendance[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+  createdBy      User           @relation("ScheduleCreatedBy", fields: [createdById], references: [id])
+  room           Room?          @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  tutor          Tutor          @relation(fields: [tutorId], references: [id])
+  tutoringSlot   TutoringSlot?  @relation(fields: [tutoringSlotId], references: [id])
+
+  @@index([tutorId, startsAt, endsAt])
+  @@index([roomId, startsAt, endsAt])
+  @@index([createdById])
+  @@index([tutoringSlotId, startsAt])
+  @@index([roomId, startsAt, endsAt], map: "schedules_roomId_idx")
+  @@index([tutorId, startsAt, endsAt], map: "schedules_tutorId_idx")
+  @@map("schedules")
+}
+
+model TutoringOffering {
+  id                   String         @id @default(cuid())
+  name                 String
+  semester             String
+  status               OfferingStatus @default(OPEN)
+  googleFormQuestionId String?
+  createdById          String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  enrollments          Enrollment[]
+  createdBy            User           @relation("OfferingCreatedBy", fields: [createdById], references: [id])
+  slots                TutoringSlot[]
+
+  @@unique([name, semester])
+  @@index([semester])
+  @@index([createdById])
+  @@map("tutoring_offerings")
+}
+
+model TutoringSlot {
+  id                    String           @id @default(cuid())
+  offeringId            String
+  tutorId               String
+  dayOfWeek             DayOfWeek
+  startTime             String
+  endTime               String
+  roomName              String?
+  maxCapacity           Int              @default(30)
+  googleFormOptionLabel String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  enrollments           Enrollment[]
+  sessions              Schedule[]
+  offering              TutoringOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  tutor                 Tutor            @relation(fields: [tutorId], references: [id])
+
+  @@index([offeringId])
+  @@index([tutorId])
+  @@index([dayOfWeek])
+  @@map("tutoring_slots")
+}
+
+model Enrollment {
+  id                   String           @id @default(cuid())
+  offeringId           String
+  slotId               String
+  studentEmail         String
+  studentName          String
+  studentRut           String?
+  studentCareer        String?
+  studentPhone         String?
+  source               EnrollmentSource @default(MANUAL)
+  googleFormResponseId String?
+  enrolledAt           DateTime         @default(now())
+  offering             TutoringOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  slot                 TutoringSlot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, studentEmail])
+  @@unique([offeringId, studentEmail])
+  @@index([studentEmail])
+  @@index([googleFormResponseId])
+  @@map("enrollments")
+}
+
+model GoogleFormLink {
+  id           String    @id @default(cuid())
+  semester     String    @unique
+  formId       String
+  formUrl      String
+  formEditUrl  String?
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("google_form_links")
+}
+
+model Attendance {
+  id           String           @id @default(cuid())
+  scheduleId   String
+  studentEmail String
+  studentName  String?
+  status       AttendanceStatus @default(PRESENT)
+  markedById   String
+  markedAt     DateTime         @default(now())
+  notes        String?
+  markedBy     User             @relation(fields: [markedById], references: [id])
+  schedule     Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, studentEmail])
+  @@index([studentEmail])
+  @@index([markedById])
+  @@map("attendances")
+}
+
+model Notification {
+  id           String             @id @default(cuid())
+  scheduleId   String
+  type         NotificationType
+  status       NotificationStatus @default(PENDING)
+  recipient    String
+  subject      String
+  body         String
+  errorMessage String?
+  sentAt       DateTime?
+  createdAt    DateTime           @default(now())
+  schedule     Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@index([status])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorId    String?
+  entity     String
+  entityId   String
+  action     String
+  beforeData Json?
+  afterData  Json?
+  createdAt  DateTime  @default(now())
+  scheduleId String?
+  actor      User?     @relation(fields: [actorId], references: [id])
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([actorId])
+  @@index([scheduleId])
+  @@map("audit_logs")
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  JUSTIFIED
+}
+
+enum NotificationType {
+  CREATED
+  UPDATED
+  CANCELLED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum OfferingStatus {
+  OPEN
+  CLOSED
+}
+
+enum EnrollmentSource {
+  GOOGLE_FORM
+  MANUAL
+}

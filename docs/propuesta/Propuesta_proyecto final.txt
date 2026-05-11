@@ -1,5 +1,7 @@
  Reingenierı́a del Sistema de Tutorı́as UCN
 
+Nota: este documento describe la propuesta y el alcance objetivo del proyecto (MVP), no el estado implementado actual del repositorio.
+
         Asignatura:      Proyecto de Desarrollo Ágil
         Estudiantes:     Victor Jopia, Diego Contreras
          Institución:   Universidad Católica del Norte (UCN) - Sede Coquimbo

@@ -1,11 +1,97 @@
-# Sistema de Tutorias UCN - Equipo Zableke
+# Zableke
 
-Este proyecto nace con un objetivo claro: mejorar la experiencia de gestion de tutorias academicas en la Universidad Catolica del Norte, sede Coquimbo, a traves de una plataforma unificada, ordenada y confiable para toda la comunidad involucrada.
+Sistema de gestion de tutorias UCN implementado como proyecto unico con Next.js en raiz.
 
-Actualmente, la coordinacion de tutorias puede volverse compleja cuando la informacion se dispersa, los cambios no llegan a tiempo o no existe una vista comun del proceso. Por eso, esta iniciativa propone un espacio central donde la organizacion de tutorias sea mas clara, mas fluida y mas facil de seguir para coordinadores, tutores y estudiantes.
+## Estructura oficial
 
-La funcion principal del sistema sera apoyar el ciclo completo de tutorias: planificacion, coordinacion, seguimiento y control de asistencia. De esta forma, cada actor tendra mayor claridad sobre su rol y sobre el estado de las sesiones, reduciendo confusiones y fortaleciendo la continuidad del trabajo academico.
+- `src/` es la fuente de verdad del codigo.
+- `src/front/` concentra el avance del frontend (components, modules, lib).
+- `src/backend/` concentra backend por capas y modulos de dominio.
+- `src/app/` mantiene App Router y API Routes de Next.js.
+- `src/graphql/` y `src/infrastructure/` contienen contexto GraphQL y cliente Prisma.
+- `prisma/` contiene schema, migraciones y seed.
+- `db/scripts/` contiene scripts operativos de base de datos.
 
-Tambien busca fortalecer la comunicacion oficial ante cambios, actualizaciones o cancelaciones, para que la informacion relevante llegue de manera oportuna y quede registrada. Esto permitira una gestion mas transparente, con mejor trazabilidad de decisiones y acciones, y con una base mas solida para evaluar y mejorar el proceso en el tiempo.
+## Desarrollo local
 
-En sintesis, este proyecto no solo apunta a ordenar horarios, sino a construir una herramienta que aporte valor real a la gestion academica diaria: menos friccion operativa, mayor coordinacion entre equipos y una experiencia de tutorias mas consistente para todos.
+```bash
+npm install
+npm run dev
+```
+
+Servidor local: http://localhost:3000
+
+## Contenedores (Docker / Podman)
+
+Funciona con `docker compose` y `podman compose` (ambos reconocen `compose.yaml` automáticamente).
+
+Levantar con build:
+
+```bash
+docker compose up --build
+# o
+podman compose up --build
+```
+
+Levantar en segundo plano:
+
+```bash
+docker compose up -d
+# o
+podman compose up -d
+```
+
+Detener servicios:
+
+```bash
+docker compose down
+# o
+podman compose down
+```
+
+## Scripts disponibles
+
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npm run lint`
+- `npm run test:backend` (unitario/servicio)
+- `npm run test:backend:integration` (integracion con BD)
+- `npm run test:backend:all` (suite completa backend)
+- `npm run db:check`
+- `npm run db:generate`
+- `npm run db:migrate`
+- `npm run db:push`
+- `npm run db:seed`
+
+## GraphQL backend
+
+Endpoint: `POST /api/graphql`
+
+Operaciones actualmente expuestas (backend):
+
+- Query `health`
+- Mutation `authenticateWithEmail`
+- Query `roleAccessPreview`
+- Query `myAccess`
+- Query `usersAccess`
+- Mutation `assignRoleToUser`
+- Mutation `removeRoleFromUser`
+
+RBAC aplicado en backend:
+
+- `usersAccess` requiere permiso `READ_ALL_SCHEDULES`
+- `assignRoleToUser` y `removeRoleFromUser` requieren permiso `MANAGE_TUTORS`
+
+## Nota de estructura y alcance
+
+La carpeta `App/` fue descartada por duplicacion de estructura. El desarrollo debe hacerse solo sobre `src/`.
+`src/app/` no se mueve a `src/front/` porque Next.js requiere el App Router en `app/` o `src/app/`.
+
+## Estado actual
+
+- Epica 1 completada (base de arquitectura e infraestructura).
+- Epica 2 completada en backend (autenticacion institucional + tests).
+- Epica 3 completada en backend (RBAC + gestion de roles + tests unitarios e integracion).
+- Integracion backend-BD activa con Prisma usando `DATABASE_URL` desde variables de entorno.
+- CI de tests backend disponible en `.github/workflows/backend-tests.yml`.
