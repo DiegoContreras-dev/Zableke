@@ -21,7 +21,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://172.16.13.103}
       DATABASE_URL: postgresql://${POSTGRES_USER:-zableke}:${POSTGRES_PASSWORD:-zableke_dev}@db:5432/${POSTGRES_DB:-zableke}?schema=public
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
@@ -63,3 +63,10 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
