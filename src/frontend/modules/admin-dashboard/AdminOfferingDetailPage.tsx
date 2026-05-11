@@ -452,7 +452,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
         <div className="flex flex-col">
           <section className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm h-full">
             <h2 className="text-sm font-semibold text-slate-900 text-center mb-2">Asistencia Promedio (Simulada)</h2>
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[200px]">
+            <div className="flex-1 flex flex-col items-center justify-center min-h-50">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -475,7 +475,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
                     ))}
                   </Pie>
                   <RechartsTooltip 
-                    formatter={(value: number) => [`${value}%`, undefined]}
+                    formatter={(value) => [value != null ? `${value}%` : "", undefined]}
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
                 </PieChart>

@@ -1,4 +1,15 @@
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: zableke-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
   app:
     build:
       context: .
@@ -10,14 +21,14 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost}
       DATABASE_URL: postgresql://${POSTGRES_USER:-zableke}:${POSTGRES_PASSWORD:-zableke_dev}@db:5432/${POSTGRES_DB:-zableke}?schema=public
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     init: true
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     command:
       - sh
       - -c

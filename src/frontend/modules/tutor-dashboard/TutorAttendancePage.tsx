@@ -520,11 +520,11 @@ export function TutorAttendancePage() {
         </DashboardPanel>
       </form>
 
+      <div style={{ animationDelay: "90ms" }}>
       <DashboardPanel
         title="Estudiantes del bloque"
         subtitle={`Total: ${attendanceStudents.length} | Presentes: ${selectedCount}`}
         className="flex min-h-0 flex-col animate-fade-in-row"
-        style={{ animationDelay: "90ms" }}
       >
         <div className="space-y-2 overflow-y-auto p-4 bg-slate-50/50">
           {attendanceLoading ? (
@@ -543,7 +543,10 @@ export function TutorAttendancePage() {
               />
             </div>
           ))}
-        </section>
-    </div>
+        </div>
+      </DashboardPanel>
+      </div>
+      </section>
+  </div>
   );
 }
