@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import { AuthError } from "@/backend/common/errors/auth.error";
 import { prisma } from "@/infrastructure/prisma/client";
 import {
@@ -140,9 +139,8 @@ export class UsersService {
     const email = (typeof input.email === "string" ? input.email.trim().toLowerCase() : "");
     const career = (typeof input.career === "string" ? input.career.trim() : "");
     const entryYear = (typeof input.entryYear === "number" ? input.entryYear : parseInt(String(input.entryYear), 10));
-    const subject = (typeof input.subject === "string" ? input.subject.trim() : "");
 
-    if (!firstName || !lastName || !rut || !email || !career || !subject || isNaN(entryYear)) {
+    if (!firstName || !lastName || !rut || !email || !career || isNaN(entryYear)) {
       throw new AuthError("Todos los campos son obligatorios", "INVALID_INPUT", 400);
     }
 
@@ -156,8 +154,6 @@ export class UsersService {
       throw new AuthError("Rol TUTOR no encontrado en la base de datos", "RESOURCE_NOT_FOUND", 500);
     }
 
-    const passwordHash = await bcrypt.hash("tutor1234", 10);
-
     const created = await this.repo.createTutorUser({
       firstName,
       lastName,
@@ -165,9 +161,7 @@ export class UsersService {
       email,
       career,
       entryYear,
-      passwordHash,
       tutorRoleId: tutorRole.id,
-      subject,
     });
 
     return toView(created);

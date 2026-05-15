@@ -56,9 +56,7 @@ export class UsersRepository {
     email: string;
     career: string;
     entryYear: number;
-    passwordHash: string;
     tutorRoleId: string;
-    subject: string;
   }): Promise<UserRecord> {
     return prisma.user.create({
       data: {
@@ -68,13 +66,12 @@ export class UsersRepository {
         rut: data.rut,
         career: data.career,
         entryYear: data.entryYear,
-        passwordHash: data.passwordHash,
         isActive: true,
         roles: {
           create: { roleId: data.tutorRoleId },
         },
         tutorProfile: {
-          create: { department: data.subject, isActive: true },
+          create: { isActive: true },
         },
       },
       include: { roles: { include: { role: true } } },

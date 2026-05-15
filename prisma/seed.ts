@@ -170,6 +170,30 @@ async function main() {
   }
 
   console.log("Seed ejecutado correctamente: roles y usuarios base creados.");
+
+  // ── Diego Contreras: admin via Google OAuth ──────────────────────────────
+  const diegoUser = await prisma.user.upsert({
+    where: { email: "diego.contreras03@alumnos.ucn.cl" },
+    update: {
+      firstName: "Diego",
+      lastName: "Contreras",
+      isActive: true,
+    },
+    create: {
+      email: "diego.contreras03@alumnos.ucn.cl",
+      firstName: "Diego",
+      lastName: "Contreras",
+      isActive: true,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: diegoUser.id, roleId: adminRole.id } },
+    update: {},
+    create: { userId: diegoUser.id, roleId: adminRole.id },
+  });
+
+  console.log("diego.contreras03@alumnos.ucn.cl registrado con rol ADMIN.");
 }
 
 main()

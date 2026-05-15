@@ -32,7 +32,6 @@ export const usersTypeDefs = `
     email: String!
     career: String!
     entryYear: Int!
-    subject: String!
   }
 
   input UpdateUserAsAdminInput {

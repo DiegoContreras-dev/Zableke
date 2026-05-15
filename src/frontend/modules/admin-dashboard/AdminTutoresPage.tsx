@@ -271,7 +271,7 @@ function ConfirmRevokeModal({ user, onConfirm, onCancel, loading }: {
 }
 
 function AddTutorModal({ onCreate, onClose, creating }: {
-  onCreate: (data: { firstName: string; lastName: string; rut: string; email: string; career: string; entryYear: number; subject: string }) => void;
+  onCreate: (data: { firstName: string; lastName: string; rut: string; email: string; career: string; entryYear: number }) => void;
   onClose: () => void;
   creating: boolean;
 }) {
@@ -283,9 +283,7 @@ function AddTutorModal({ onCreate, onClose, creating }: {
     email: "",
     career: "",
     entryYear: String(currentYear),
-    subject: "",
   });
-  const [subjectOpen, setSubjectOpen] = useState(false);
   const [careerOpen, setCareerOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -304,7 +302,7 @@ function AddTutorModal({ onCreate, onClose, creating }: {
     if (!form.career.trim()) e.career = "Requerido";
     const year = parseInt(form.entryYear, 10);
     if (isNaN(year) || year < 1990 || year > currentYear) e.entryYear = `Debe ser entre 1990 y ${currentYear}`;
-    if (!form.subject) e.subject = "Selecciona un ramo";
+
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -318,7 +316,6 @@ function AddTutorModal({ onCreate, onClose, creating }: {
       email: form.email.trim().toLowerCase(),
       career: form.career.trim(),
       entryYear: parseInt(form.entryYear, 10),
-      subject: form.subject,
     });
   }
 
@@ -366,86 +363,47 @@ function AddTutorModal({ onCreate, onClose, creating }: {
             {errors.email && <p className="mt-0.5 text-xs text-rose-500">{errors.email}</p>}
           </div>
 
-          {/* Carrera + Año de ingreso */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-              <label className="mb-1 block text-xs font-semibold text-slate-600">Carrera <span className="text-rose-500">*</span></label>
-              <button type="button" onClick={() => setCareerOpen((v) => !v)}
-                className={`flex w-full items-center justify-between rounded-lg border py-2 px-3 text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.career ? "border-rose-400 text-slate-400" : form.career ? "border-slate-200 text-slate-800 focus:border-[#23415B]" : "border-slate-200 text-slate-400 focus:border-[#23415B]"}`}>
-                <span>{form.career || "Seleccionar carrera…"}</span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${careerOpen ? "rotate-180" : ""}`} />
-              </button>
-              {errors.career && <p className="mt-0.5 text-xs text-rose-500">{errors.career}</p>}
-              {careerOpen && (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                  <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-                    Ing. Informática / TI
-                  </div>
-                  {UCN_CAREERS_PRIORITY.map((c) => (
-                    <button key={c} type="button"
-                      onClick={() => { set("career", c); setCareerOpen(false); }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-[#23415B]/5 ${form.career === c ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#23415B] shrink-0" />{c}
-                    </button>
-                  ))}
-                  <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-y border-slate-100">
-                    Otras carreras UCN
-                  </div>
-                  {UCN_CAREERS_OTHERS.map((c) => (
-                    <button key={c} type="button"
-                      onClick={() => { set("career", c); setCareerOpen(false); }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 ${form.career === c ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0" />{c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">Año de ingreso <span className="text-rose-500">*</span></label>
-              <input type="number" min={1990} max={currentYear} placeholder={String(currentYear)} value={form.entryYear} onChange={(e) => set("entryYear", e.target.value)}
-                className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.entryYear ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
-              {errors.entryYear && <p className="mt-0.5 text-xs text-rose-500">{errors.entryYear}</p>}
-            </div>
-          </div>
-
-          {/* Ramo a dar — dropdown */}
+          {/* Carrera */}
           <div className="relative">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Ramo a dar <span className="text-rose-500">*</span></label>
-            <button type="button" onClick={() => setSubjectOpen((v) => !v)}
-              className={`flex w-full items-center justify-between rounded-lg border py-2 px-3 text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.subject ? "border-rose-400 text-slate-400" : form.subject ? "border-slate-200 text-slate-800 focus:border-[#23415B]" : "border-slate-200 text-slate-400 focus:border-[#23415B]"}`}>
-              <span className="flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 shrink-0 text-slate-400" />
-                {form.subject || "Seleccionar ramo…"}
-              </span>
-              <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${subjectOpen ? "rotate-180" : ""}`} />
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Carrera <span className="text-rose-500">*</span></label>
+            <button type="button" onClick={() => setCareerOpen((v) => !v)}
+              className={`flex w-full items-center justify-between rounded-lg border py-2.5 px-3 text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.career ? "border-rose-400 text-slate-400" : form.career ? "border-slate-200 text-slate-800 focus:border-[#23415B]" : "border-slate-200 text-slate-400 focus:border-[#23415B]"}`}>
+              <span className={form.career ? "text-slate-800 font-medium" : ""}>{form.career || "Seleccionar carrera…"}</span>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${careerOpen ? "rotate-180" : ""}`} />
             </button>
-            {errors.subject && <p className="mt-0.5 text-xs text-rose-500">{errors.subject}</p>}
-
-            {subjectOpen && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-                  Prioritarios
+            {errors.career && <p className="mt-0.5 text-xs text-rose-500">{errors.career}</p>}
+            {careerOpen && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl">
+                <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
+                  Ing. Informática / TI
                 </div>
-                {UCN_SUBJECTS_PRIORITY.map((s) => (
-                  <button key={s} type="button"
-                    onClick={() => { set("subject", s); setSubjectOpen(false); }}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-[#23415B]/5 ${form.subject === s ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#23415B] shrink-0" />{s}
+                {UCN_CAREERS_PRIORITY.map((c) => (
+                  <button key={c} type="button"
+                    onClick={() => { set("career", c); setCareerOpen(false); }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-[#23415B]/5 ${form.career === c ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
+                    <span className="h-2 w-2 rounded-full bg-[#23415B] shrink-0" />{c}
                   </button>
                 ))}
-                <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-y border-slate-100">
-                  Otros ramos UCN
+                <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-y border-slate-100">
+                  Otras carreras UCN
                 </div>
-                {UCN_SUBJECTS_OTHERS.map((s) => (
-                  <button key={s} type="button"
-                    onClick={() => { set("subject", s); setSubjectOpen(false); }}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 ${form.subject === s ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0" />{s}
+                {UCN_CAREERS_OTHERS.map((c) => (
+                  <button key={c} type="button"
+                    onClick={() => { set("career", c); setCareerOpen(false); }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-slate-50 ${form.career === c ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
+                    <span className="h-2 w-2 rounded-full bg-slate-300 shrink-0" />{c}
                   </button>
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Año de ingreso */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Año de ingreso <span className="text-rose-500">*</span></label>
+            <input type="number" min={1990} max={currentYear} placeholder={String(currentYear)} value={form.entryYear} onChange={(e) => set("entryYear", e.target.value)}
+              className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.entryYear ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
+            {errors.entryYear && <p className="mt-0.5 text-xs text-rose-500">{errors.entryYear}</p>}
           </div>
 
           {/* Nota contraseña */}
@@ -733,7 +691,7 @@ export function AdminTutoresPage() {
     } catch { showToast("err", "No se pudo asignar el rol."); }
   };
 
-  const handleCreate = async (input: { firstName: string; lastName: string; rut: string; email: string; career: string; entryYear: number; subject: string }) => {
+  const handleCreate = async (input: { firstName: string; lastName: string; rut: string; email: string; career: string; entryYear: number }) => {
     try {
       await createTutor({ variables: { input } });
       showToast("ok", `Tutor ${input.firstName} ${input.lastName} creado exitosamente.`);
