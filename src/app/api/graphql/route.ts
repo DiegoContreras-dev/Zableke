@@ -59,7 +59,6 @@ const graphqlHandler = startServerAndCreateNextHandler<NextRequest, GraphQLConte
 const ALLOWED_ORIGINS = [
   "http://localhost",
   "http://localhost:3000",
-  "http://zableke.duckdns.org",
   "http://172.16.13.103.nip.io"
 ];
 
