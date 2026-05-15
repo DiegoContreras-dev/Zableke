@@ -260,26 +260,26 @@ export function AdminTutoriasPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <div className="space-y-4 sm:space-y-5">
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500">Semestre {semester}</p>
           <h1 className="text-2xl font-bold text-slate-900">Ofertas de Tutoría</h1>
           <p className="mt-1 text-sm text-slate-600">
             {filteredOfferings.length} oferta(s), {totalEnrollments} estudiante(s) inscrito(s).
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 xl:w-auto">
           <input
             value={semester}
             onChange={(event) => setSemester(event.target.value)}
-            className="h-10 rounded-md border border-slate-300 px-3 text-sm"
+            className="h-10 min-w-0 rounded-md border border-slate-300 px-3 text-sm sm:col-span-2 lg:col-span-1 lg:w-28"
             aria-label="Semestre"
           />
           <button
             onClick={handleGlobalSync}
             disabled={syncingForm}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 ${syncingForm ? "animate-spin" : ""}`} />
             Sincronizar Respuestas
@@ -287,21 +287,21 @@ export function AdminTutoriasPage() {
           <button
             onClick={handleGenerateForm}
             disabled={generatingForm}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             {generatingForm ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
             Generar Form
           </button>
           <button
             onClick={() => setIsManagingCareers(true)}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <BookOpen className="h-4 w-4" />
             Carreras Ofertadas
           </button>
           <button
             onClick={() => setIsCreating(true)}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#23415B] px-4 text-sm font-medium text-white hover:bg-[#1a3146]"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md bg-[#23415B] px-3 text-sm font-medium text-white hover:bg-[#1a3146]"
           >
             <Plus className="h-4 w-4" />
             Nueva Tutoría
@@ -329,42 +329,42 @@ export function AdminTutoriasPage() {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="flex min-w-0 items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
             <BookOpen className="h-6 w-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-slate-500">Total Tutorías</p>
             <p className="text-2xl font-bold text-slate-900">{filteredOfferings.length}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+        <div className="flex min-w-0 items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
             <Clock className="h-6 w-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-slate-500">Paralelos Abiertos</p>
             <p className="text-2xl font-bold text-slate-900">{totalSlots}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        <div className="flex min-w-0 items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2 xl:col-span-1">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
             <Users className="h-6 w-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-slate-500">Alumnos Inscritos</p>
             <p className="text-2xl font-bold text-slate-900">{totalEnrollments}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="xl:col-span-2">
           <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-sm font-semibold text-slate-900">Tutorías publicables</h2>
-              <label className="relative w-full sm:w-80">
+              <label className="relative w-full md:w-80">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={searchTerm}
@@ -386,8 +386,40 @@ export function AdminTutoriasPage() {
                 <p className="text-sm font-medium text-slate-600">No hay tutorías que coincidan con la búsqueda.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <>
+              <div className="divide-y divide-slate-100 md:hidden">
+                {filteredOfferings.map((offering) => (
+                  <article key={offering.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <Link href={`/admin/tutorias/${offering.id}`} className="min-w-0 flex-1 font-semibold text-slate-900 hover:text-[#23415B] hover:underline">
+                        {offering.name}
+                      </Link>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${offering.status === "OPEN" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                        }`}>
+                        {offering.status === "OPEN" ? "ABIERTA" : "CERRADA"}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div className="rounded-md bg-slate-50 px-3 py-2">
+                        <p className="text-xs font-medium text-slate-500">Paralelos</p>
+                        <p className="font-semibold text-slate-900">{offering.slotsCount}</p>
+                      </div>
+                      <div className="rounded-md bg-slate-50 px-3 py-2">
+                        <p className="text-xs font-medium text-slate-500">Inscritos</p>
+                        <p className="font-semibold text-slate-900">{offering.enrollmentsCount}</p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/admin/tutorias/${offering.id}`}
+                      className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md bg-[#23415B] px-3 text-xs font-medium text-white hover:bg-[#1a3146]"
+                    >
+                      Ver detalles
+                    </Link>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[640px] text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                     <tr>
                       <th className="px-4 py-3 text-left">Nombre</th>
@@ -426,6 +458,7 @@ export function AdminTutoriasPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </section>
         </div>
@@ -438,10 +471,10 @@ export function AdminTutoriasPage() {
                 Sin datos suficientes
               </div>
             ) : (
-              <div className="h-64 w-full">
+              <div className="h-56 w-full sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={filteredOfferings} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} />
+                  <BarChart data={filteredOfferings} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} axisLine={false} tickLine={false} />
                     <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                     <Bar dataKey="enrollmentsCount" name="Inscritos" fill="#23415B" radius={[4, 4, 0, 0]} barSize={40} />
@@ -454,8 +487,8 @@ export function AdminTutoriasPage() {
       </div>
 
       {isCreating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <form onSubmit={handleCreate} className="w-full max-w-xl rounded-lg bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-3 sm:items-center sm:p-4">
+          <form onSubmit={handleCreate} className="my-4 w-full max-w-xl rounded-lg bg-white p-5 shadow-xl sm:my-0 sm:max-h-[calc(100vh-2rem)] sm:overflow-y-auto">
             <h2 className="text-base font-semibold text-slate-900">Nueva Tutoría</h2>
             <label className="mt-4 block text-sm font-medium text-slate-700">
               Nombre de la asignatura
@@ -559,17 +592,17 @@ export function AdminTutoriasPage() {
                 <p>{errorMessage}</p>
               </div>
             )}
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => { setIsCreating(false); setErrorMessage(null); }}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="h-10 rounded-md border border-slate-300 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Cancelar
               </button>
               <button
                 disabled={creating}
-                className="inline-flex items-center gap-2 rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white hover:bg-[#1a3146] disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#23415B] px-4 text-sm font-medium text-white hover:bg-[#1a3146] disabled:opacity-60"
               >
                 {creating && <LoaderCircle className="h-4 w-4 animate-spin" />}
                 Crear
