@@ -48,6 +48,11 @@ const TUTORES_QUERY = gql`
       fillRate
       grade
     }
+    careers {
+      id
+      name
+      schoolName
+    }
   }
 `;
 
@@ -103,63 +108,6 @@ const CREATE_TUTOR = gql`
   }
 `;
 
-// UCN careers
-const UCN_CAREERS_PRIORITY = [
-  "Ingeniería en Tecnologías de la Información",
-  "Ingeniería Civil en Computación e Informática",
-  "Ingeniería Civil Industrial",
-];
-const UCN_CAREERS_OTHERS = [
-  "Ingeniería Civil",
-  "Ingeniería Civil Mecánica",
-  "Ingeniería Civil Eléctrica",
-  "Ingeniería Civil en Minas",
-  "Ingeniería Civil Química",
-  "Ingeniería en Construcción",
-  "Ingeniería Comercial",
-  "Contador Auditor",
-  "Derecho",
-  "Medicina",
-  "Enfermería",
-  "Kinesiología",
-  "Psicología",
-  "Pedagogía en Educación Básica",
-  "Arquitectura",
-  "Diseño Industrial",
-  "Geología",
-  "Bioquímica",
-  "Química y Farmacia",
-  "Trabajo Social",
-];
-
-// UCN subjects — prioritarios primero
-const UCN_SUBJECTS_PRIORITY = [
-  "Programación Orientada a Objetos (POO)",
-  "Programación",
-  "Estadística",
-  "Cálculo",
-];
-const UCN_SUBJECTS_OTHERS = [
-  "Álgebra Lineal",
-  "Ecuaciones Diferenciales",
-  "Física",
-  "Química",
-  "Bases de Datos",
-  "Redes de Computadores",
-  "Algoritmos y Estructuras de Datos",
-  "Sistemas Operativos",
-  "Ingeniería de Software",
-  "Arquitectura de Computadores",
-  "Inteligencia Artificial",
-  "Seguridad Informática",
-  "Análisis Numérico",
-  "Termodinámica",
-  "Electromagnetismo",
-  "Resistencia de Materiales",
-  "Contabilidad",
-  "Economía",
-];
-const UCN_ALL_SUBJECTS = [...UCN_SUBJECTS_PRIORITY, ...UCN_SUBJECTS_OTHERS];
 
 interface UserAccessRow {
   id: string;
@@ -170,6 +118,24 @@ interface UserAccessRow {
   career?: string | null;
   isActive: boolean;
   roles: string[];
+}
+
+interface CareerOption {
+  id: string;
+  name: string;
+  schoolName: string;
+}
+
+function groupCareersBySchool(careers: CareerOption[]) {
+  const groups = new Map<string, CareerOption[]>();
+  for (const career of careers) {
+    const school = career.schoolName || "Carreras";
+    groups.set(school, [...(groups.get(school) ?? []), career]);
+  }
+  return [...groups.entries()].map(([schoolName, items]) => ({
+    schoolName,
+    careers: items,
+  }));
 }
 
 interface TutorStat {
@@ -270,12 +236,14 @@ function ConfirmRevokeModal({ user, onConfirm, onCancel, loading }: {
   );
 }
 
-function AddTutorModal({ onCreate, onClose, creating }: {
+function AddTutorModal({ onCreate, onClose, creating, careers }: {
   onCreate: (data: { firstName: string; lastName: string; rut: string; email: string; career: string; entryYear: number }) => void;
   onClose: () => void;
   creating: boolean;
+  careers: CareerOption[];
 }) {
   const currentYear = new Date().getFullYear();
+  const careerGroups = useMemo(() => groupCareersBySchool(careers), [careers]);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -299,7 +267,8 @@ function AddTutorModal({ onCreate, onClose, creating }: {
     if (!form.rut.trim()) e.rut = "Requerido";
     if (!form.email.trim()) e.email = "Requerido";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Correo inválido";
-    if (!form.career.trim()) e.career = "Requerido";
+    if (careers.length === 0) e.career = "No hay carreras registradas";
+    else if (!form.career.trim()) e.career = "Requerido";
     const year = parseInt(form.entryYear, 10);
     if (isNaN(year) || year < 1990 || year > currentYear) e.entryYear = `Debe ser entre 1990 y ${currentYear}`;
 
@@ -374,25 +343,21 @@ function AddTutorModal({ onCreate, onClose, creating }: {
             {errors.career && <p className="mt-0.5 text-xs text-rose-500">{errors.career}</p>}
             {careerOpen && (
               <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl">
-                <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-                  Ing. Informática / TI
-                </div>
-                {UCN_CAREERS_PRIORITY.map((c) => (
-                  <button key={c} type="button"
-                    onClick={() => { set("career", c); setCareerOpen(false); }}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-[#23415B]/5 ${form.career === c ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
-                    <span className="h-2 w-2 rounded-full bg-[#23415B] shrink-0" />{c}
-                  </button>
-                ))}
-                <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-50 border-y border-slate-100">
-                  Otras carreras UCN
-                </div>
-                {UCN_CAREERS_OTHERS.map((c) => (
-                  <button key={c} type="button"
-                    onClick={() => { set("career", c); setCareerOpen(false); }}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-slate-50 ${form.career === c ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
-                    <span className="h-2 w-2 rounded-full bg-slate-300 shrink-0" />{c}
-                  </button>
+                {careerGroups.length === 0 ? (
+                  <p className="px-3 py-3 text-sm text-slate-500">No hay carreras registradas.</p>
+                ) : careerGroups.map((group) => (
+                  <div key={group.schoolName}>
+                    <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      {group.schoolName}
+                    </div>
+                    {group.careers.map((career) => (
+                      <button key={career.id} type="button"
+                        onClick={() => { set("career", career.name); setCareerOpen(false); }}
+                        className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-[#23415B]/5 ${form.career === career.name ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
+                        <span className="h-2 w-2 rounded-full bg-[#23415B] shrink-0" />{career.name}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
             )}
@@ -429,13 +394,15 @@ function AddTutorModal({ onCreate, onClose, creating }: {
   );
 }
 
-function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, deleting, onSaveEdit, saving }: {
+function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, deleting, onSaveEdit, saving, careers }: {
   stat: TutorStat; user?: UserAccessRow; onClose: () => void;
   onRevoke: () => void; revoking: boolean;
   onDelete: () => void; deleting: boolean;
   onSaveEdit: (data: { firstName: string; lastName: string; phone: string; career: string }) => Promise<void>;
   saving: boolean;
+  careers: CareerOption[];
 }) {
+  const careerGroups = useMemo(() => groupCareersBySchool(careers), [careers]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "", career: "" });
@@ -532,12 +499,21 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
                 </button>
                 {careerDropOpen && (
                   <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                    {[...UCN_CAREERS_PRIORITY, ...UCN_CAREERS_OTHERS].map((c) => (
-                      <button key={c} type="button"
-                        onClick={() => { setEditForm((f) => ({ ...f, career: c })); setCareerDropOpen(false); }}
-                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#23415B]/5 ${editForm.career === c ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
-                        {c}
-                      </button>
+                    {careerGroups.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-slate-500">No hay carreras registradas.</p>
+                    ) : careerGroups.map((group) => (
+                      <div key={group.schoolName}>
+                        <div className="bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          {group.schoolName}
+                        </div>
+                        {group.careers.map((career) => (
+                          <button key={career.id} type="button"
+                            onClick={() => { setEditForm((f) => ({ ...f, career: career.name })); setCareerDropOpen(false); }}
+                            className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#23415B]/5 ${editForm.career === career.name ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
+                            {career.name}
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -655,15 +631,16 @@ export function AdminTutoresPage() {
   const [selectedStat, setSelectedStat] = useState<TutorStat | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
-  const { data, loading, error } = useQuery<{ usersAccess: UserAccessRow[]; tutorStats: TutorStat[] }>(TUTORES_QUERY, { fetchPolicy: "cache-and-network" });
+  const { data, loading, error } = useQuery<{ usersAccess: UserAccessRow[]; tutorStats: TutorStat[]; careers: CareerOption[] }>(TUTORES_QUERY, { fetchPolicy: "cache-and-network" });
   const [assignRole, { loading: assigning }] = useMutation(ASSIGN_ROLE, { refetchQueries: ["AdminTutoresAccess"] });
   const [removeRole, { loading: revoking }] = useMutation(REMOVE_ROLE, { refetchQueries: ["AdminTutoresAccess"] });
   const [createTutor, { loading: creating }] = useMutation(CREATE_TUTOR, { refetchQueries: ["AdminTutoresAccess"] });
   const [deleteUserMutation, { loading: deleting }] = useMutation(DELETE_USER, { refetchQueries: ["AdminTutoresAccess"] });
   const [adminUpdateUserMutation, { loading: saving }] = useMutation(ADMIN_UPDATE_USER, { refetchQueries: ["AdminTutoresAccess"] });
 
-  const users = data?.usersAccess ?? [];
-  const stats = data?.tutorStats ?? [];
+  const users = useMemo(() => data?.usersAccess ?? [], [data?.usersAccess]);
+  const stats = useMemo(() => data?.tutorStats ?? [], [data?.tutorStats]);
+  const careers = useMemo(() => data?.careers ?? [], [data?.careers]);
   const statsMap = useMemo(() => new Map(stats.map((s) => [s.email, s])), [stats]);
   const usersMap = useMemo(() => new Map(users.map((u) => [u.email, u])), [users]);
 
@@ -736,8 +713,8 @@ export function AdminTutoresPage() {
   return (
     <>
       {confirmRevoke && <ConfirmRevokeModal user={confirmRevoke} onConfirm={() => handleRevoke()} onCancel={() => setConfirmRevoke(null)} loading={revoking} />}
-      {showAddModal && <AddTutorModal onCreate={handleCreate} onClose={() => setShowAddModal(false)} creating={creating} />}
-      {selectedStat && <TutorDetailPanel stat={selectedStat} user={usersMap.get(selectedStat.email)} onClose={() => setSelectedStat(null)} onRevoke={() => handleRevoke(selectedStat.email)} revoking={revoking} onDelete={() => handleDelete(selectedStat.userId)} deleting={deleting} onSaveEdit={(data) => handleSaveEdit(selectedStat.userId, data)} saving={saving} />}
+      {showAddModal && <AddTutorModal onCreate={handleCreate} onClose={() => setShowAddModal(false)} creating={creating} careers={careers} />}
+      {selectedStat && <TutorDetailPanel stat={selectedStat} user={usersMap.get(selectedStat.email)} onClose={() => setSelectedStat(null)} onRevoke={() => handleRevoke(selectedStat.email)} revoking={revoking} onDelete={() => handleDelete(selectedStat.userId)} deleting={deleting} onSaveEdit={(data) => handleSaveEdit(selectedStat.userId, data)} saving={saving} careers={careers} />}
 
       {toast && (
         <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg ${toast.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>

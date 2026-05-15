@@ -177,19 +177,20 @@ export class AuthService {
       throw new AuthError("Email not found in Google token", "EMAIL_MISSING", 401);
     }
 
-    // Validar dominio institucional
-    const validation = validateInstitutionalEmail(email, this.allowedDomains);
-    if (!validation.ok) {
-      throw new AuthError(
-        "Only institutional email domains are allowed (@alumnos.ucn.cl or @ce.ucn.cl)",
-        "EMAIL_NOT_ALLOWED",
-        403
-      );
-    }
-
-    let user = await this.repository.findByEmail(validation.normalizedEmail);
+    let user = await this.repository.findByEmail(email);
 
     if (!user) {
+      // Las cuentas pre-cargadas en BD pueden usar Google OAuth aunque no sean
+      // de dominio institucional. Las cuentas nuevas siguen restringidas.
+      const validation = validateInstitutionalEmail(email, this.allowedDomains);
+      if (!validation.ok) {
+        throw new AuthError(
+          "Only pre-authorized or institutional email domains are allowed",
+          "EMAIL_NOT_ALLOWED",
+          403
+        );
+      }
+
       const firstName = (googlePayload["given_name"] ?? "").trim() || deriveNameFromEmail(validation.normalizedEmail).firstName;
       const lastName = (googlePayload["family_name"] ?? "").trim() || deriveNameFromEmail(validation.normalizedEmail).lastName;
       const roleName = getRoleForDomain(validation.normalizedEmail);
