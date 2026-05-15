@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { AuthError } from "@/backend/common/errors/auth.error";
+import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 import { AttendanceService } from "@/backend/modules/attendance/service/attendance.service";
+
+const TUTOR_USER: CurrentUserLike = { id: "user-1", roles: ["TUTOR"] };
+const ADMIN_USER: CurrentUserLike = { id: "admin-1", roles: ["ADMIN"] };
+const OTHER_TUTOR: CurrentUserLike = { id: "otro-user", roles: ["TUTOR"] };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,7 +58,7 @@ test("AttendanceService.recordBulkAttendance rechaza input nulo", async () => {
   const service = new AttendanceService(makeRepoMock() as never);
 
   await assert.rejects(
-    () => service.recordBulkAttendance(null, "user-1"),
+    () => service.recordBulkAttendance(null, TUTOR_USER),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
 });
@@ -65,7 +70,7 @@ test("AttendanceService.recordBulkAttendance rechaza scheduleId vacío", async (
     () =>
       service.recordBulkAttendance(
         { scheduleId: "", attendances: [{ studentEmail: "s@ucn.cl", status: "PRESENT" }] },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
@@ -75,7 +80,7 @@ test("AttendanceService.recordBulkAttendance rechaza array de asistencias vacío
   const service = new AttendanceService(makeRepoMock() as never);
 
   await assert.rejects(
-    () => service.recordBulkAttendance({ scheduleId: "sch-1", attendances: [] }, "user-1"),
+    () => service.recordBulkAttendance({ scheduleId: "sch-1", attendances: [] }, TUTOR_USER),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
 });
@@ -90,7 +95,7 @@ test("AttendanceService.recordBulkAttendance rechaza email inválido", async () 
           scheduleId: "sch-1",
           attendances: [{ studentEmail: "no-es-email", status: "PRESENT" }],
         },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
@@ -106,7 +111,7 @@ test("AttendanceService.recordBulkAttendance rechaza status inválido", async ()
           scheduleId: "sch-1",
           attendances: [{ studentEmail: "s@ucn.cl", status: "UNKNOWN" }],
         },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
@@ -123,10 +128,25 @@ test("AttendanceService.recordBulkAttendance lanza FORBIDDEN si el tutor no es d
           scheduleId: "sch-1",
           attendances: [{ studentEmail: "s@ucn.cl", status: "PRESENT" }],
         },
-        "otro-user"
+        OTHER_TUTOR
       ),
     (err) => err instanceof AuthError && err.code === "FORBIDDEN"
   );
+});
+
+test("AttendanceService.recordBulkAttendance permite al admin registrar sin ser dueño", async () => {
+  const repoMock = makeRepoMock({ verifyScheduleOwnership: async () => false });
+  const service = new AttendanceService(repoMock as never);
+
+  const result = await service.recordBulkAttendance(
+    {
+      scheduleId: "sch-1",
+      attendances: [{ studentEmail: "s@ucn.cl", status: "PRESENT" }],
+    },
+    ADMIN_USER
+  );
+
+  assert.equal(result.length, 1);
 });
 
 test("AttendanceService.recordBulkAttendance guarda y retorna AttendanceView[]", async () => {
@@ -140,7 +160,7 @@ test("AttendanceService.recordBulkAttendance guarda y retorna AttendanceView[]",
         { studentEmail: "b@ucn.cl", status: "ABSENT" },
       ],
     },
-    "user-1"
+    TUTOR_USER
   );
 
   assert.equal(result.length, 2);
@@ -163,7 +183,7 @@ test("AttendanceService.recordBulkAttendance normaliza emails a minúscula", asy
       scheduleId: "sch-1",
       attendances: [{ studentEmail: "UPPER@UCN.CL", status: "PRESENT" }],
     },
-    "user-1"
+    TUTOR_USER
   );
 
   assert.equal(capturedEmail, "upper@ucn.cl");
@@ -178,7 +198,7 @@ test("AttendanceService.recordBulkAttendance acepta status en minúscula (normal
       scheduleId: "sch-1",
       attendances: [{ studentEmail: "a@ucn.cl", status: "present" }],
     },
-    "user-1"
+    TUTOR_USER
   );
 
   assert.equal(result.length, 1);

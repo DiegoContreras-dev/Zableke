@@ -81,9 +81,8 @@ export const attendanceResolvers = {
       args: { input: unknown },
       context: GraphQLContext
     ) => {
-      const user = requireUser(context.currentUser);
-      requirePermission(context.currentUser, "WRITE_OWN_SCHEDULES");
-      return attendanceService.recordBulkAttendance(args.input, user.id);
+      const user = requirePermission(context.currentUser, "WRITE_OWN_SCHEDULES");
+      return attendanceService.recordBulkAttendance(args.input, user);
     },
   },
 };

@@ -127,6 +127,7 @@ export const offeringsTypeDefs = `
     offerings(semester: String): [TutoringOffering!]!
     offering(id: ID!): TutoringOffering
     myTutoringSlots: [TutoringSlot!]!
+    tutoringSlotsByTutor(tutorUserId: ID!): [TutoringSlot!]!
     enrolledStudents(slotId: ID!): [EnrollmentRecord!]!
     attendanceForSlot(slotId: ID!, date: String!): SlotAttendanceView!
     tutorOptions: [TutorOption!]!
@@ -162,6 +163,11 @@ export const offeringsResolvers = {
     myTutoringSlots: async (_: unknown, __: unknown, context: GraphQLContext) => {
       const user = requirePermission(context.currentUser, "READ_OWN_SCHEDULES");
       return offeringsService.getSlotsByTutor(user.id);
+    },
+
+    tutoringSlotsByTutor: async (_: unknown, args: { tutorUserId: string }, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_TUTORS");
+      return offeringsService.getSlotsByTutor(args.tutorUserId);
     },
 
     enrolledStudents: async (_: unknown, args: { slotId: string }, context: GraphQLContext) => {

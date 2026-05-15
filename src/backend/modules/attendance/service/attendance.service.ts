@@ -1,4 +1,5 @@
 import { AuthError } from "@/backend/common/errors/auth.error";
+import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 import {
   AttendanceRepository,
   type AttendanceRecord,
@@ -90,17 +91,19 @@ function parseBulkInput(raw: unknown): BulkAttendanceInput {
 export class AttendanceService {
   constructor(private readonly repo = new AttendanceRepository()) {}
 
-  async recordBulkAttendance(rawInput: unknown, markedById: string): Promise<AttendanceView[]> {
+  async recordBulkAttendance(rawInput: unknown, user: CurrentUserLike): Promise<AttendanceView[]> {
     const input = parseBulkInput(rawInput);
+    const isAdmin = user.roles.includes("ADMIN");
 
-    // Verificar que el schedule pertenece al tutor autenticado
-    const isOwner = await this.repo.verifyScheduleOwnership(input.scheduleId, markedById);
-    if (!isOwner) {
-      throw new AuthError(
-        "Schedule not found or you do not have permission to record attendance for it",
-        "FORBIDDEN",
-        403
-      );
+    if (!isAdmin) {
+      const isOwner = await this.repo.verifyScheduleOwnership(input.scheduleId, user.id);
+      if (!isOwner) {
+        throw new AuthError(
+          "Schedule not found or you do not have permission to record attendance for it",
+          "FORBIDDEN",
+          403
+        );
+      }
     }
 
     const results = await Promise.all(
@@ -110,7 +113,7 @@ export class AttendanceService {
           studentEmail: a.studentEmail,
           studentName: a.studentName,
           status: a.status as "PRESENT" | "ABSENT" | "JUSTIFIED",
-          markedById,
+          markedById: user.id,
           notes: a.notes,
         })
       )
