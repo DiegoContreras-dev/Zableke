@@ -14,6 +14,7 @@ import {
   LoaderCircle,
   Mail,
   MapPin,
+  Search,
   Shield,
   TrendingUp,
   Users,
@@ -735,6 +736,7 @@ function AttendanceView({
 export function AdminAuditoriaPage() {
   const [selectedTutor, setSelectedTutor] = useState<TutorStat | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TutoringSlot | null>(null);
+  const [tutorSearch, setTutorSearch] = useState("");
 
   const { data: statsData, loading: statsLoading, error: statsError } = useQuery<{
     tutorStats: TutorStat[];
@@ -749,6 +751,11 @@ export function AdminAuditoriaPage() {
   });
 
   const tutors = useMemo(() => statsData?.tutorStats ?? [], [statsData]);
+  const filteredTutors = useMemo(() => {
+    const needle = tutorSearch.trim().toLowerCase();
+    if (!needle) return tutors;
+    return tutors.filter((tutor) => tutor.name.toLowerCase().includes(needle));
+  }, [tutors, tutorSearch]);
   const slots = useMemo(() => slotsData?.tutoringSlotsByTutor ?? [], [slotsData]);
 
   const handleSelectTutor = (tutor: TutorStat) => {
@@ -812,11 +819,22 @@ export function AdminAuditoriaPage() {
             </nav>
           </div>
           {!selectedTutor && (
-            <div className="flex items-center gap-2 rounded-lg bg-[#23415B]/5 px-3 py-2">
-              <Shield className="h-4 w-4 text-[#23415B]" />
-              <span className="text-sm font-medium text-[#23415B]">
-                {tutors.length} tutores registrados
-              </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="relative block w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={tutorSearch}
+                  onChange={(event) => setTutorSearch(event.target.value)}
+                  placeholder="Buscar tutor por nombre"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-[#23415B] focus:ring-1 focus:ring-[#23415B]"
+                />
+              </label>
+              <div className="flex h-10 items-center gap-2 rounded-lg bg-[#23415B]/5 px-3">
+                <Shield className="h-4 w-4 text-[#23415B]" />
+                <span className="text-sm font-medium text-[#23415B]">
+                  {filteredTutors.length} de {tutors.length} tutores
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -847,7 +865,14 @@ export function AdminAuditoriaPage() {
           onBack={handleBackToTutors}
         />
       ) : (
-        <TutorGrid tutors={tutors} onSelect={handleSelectTutor} />
+        filteredTutors.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">
+            <Search className="h-8 w-8 text-slate-300" />
+            <p className="text-sm font-medium">No se encontraron tutores con ese nombre.</p>
+          </div>
+        ) : (
+          <TutorGrid tutors={filteredTutors} onSelect={handleSelectTutor} />
+        )
       )}
     </div>
   );
