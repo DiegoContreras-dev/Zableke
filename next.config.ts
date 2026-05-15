@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     serverActions: {
-      allowedOrigins: ["zableke.duckdns.org", "localhost", "localhost:3000"],
+      allowedOrigins: ["172.16.13.103.nip.io", "localhost", "localhost:3000"],
     },
   },
   // Permite que Next.js acepte peticiones desde estos dominios
