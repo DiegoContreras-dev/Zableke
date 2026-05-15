@@ -24,7 +24,7 @@ services:
     environment:
       NODE_ENV: production
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zableke}:${POSTGRES_PASSWORD:-zableke_dev}@db:5432/${POSTGRES_DB:-zableke}?schema=public
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
