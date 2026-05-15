@@ -35,6 +35,13 @@ export const usersTypeDefs = `
     subject: String!
   }
 
+  input UpdateUserAsAdminInput {
+    firstName: String
+    lastName: String
+    phone: String
+    career: String
+  }
+
   extend type Query {
     me: UserProfile!
   }
@@ -43,6 +50,7 @@ export const usersTypeDefs = `
     updateMyProfile(input: UpdateProfileInput!): UserProfile!
     deleteUser(id: ID!): Boolean!
     createTutor(input: CreateTutorInput!): UserProfile!
+    adminUpdateUser(id: ID!, input: UpdateUserAsAdminInput!): UserProfile!
   }
 `;
 
@@ -77,6 +85,14 @@ export const usersResolvers = {
     ) => {
       requirePermission(context.currentUser, "MANAGE_TUTORS");
       return usersService.createTutor(args.input);
+    },
+    adminUpdateUser: async (
+      _: unknown,
+      args: { id: string; input: unknown },
+      context: GraphQLContext
+    ) => {
+      requireRole(context.currentUser, ["ADMIN"]);
+      return usersService.adminUpdateUser(args.id, args.input);
     },
   },
 };

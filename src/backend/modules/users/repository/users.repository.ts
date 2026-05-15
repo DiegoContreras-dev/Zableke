@@ -8,7 +8,8 @@ export type UserRecord = Prisma.UserGetPayload<{
 export interface UpdateProfileInput {
   firstName?: string;
   lastName?: string;
-  phone?: string;
+  phone?: string | null;
+  career?: string | null;
   bio?: string;
   linkedinUrl?: string;
 }
@@ -22,6 +23,14 @@ export class UsersRepository {
   }
 
   async updateProfile(id: string, data: UpdateProfileInput): Promise<UserRecord> {
+    return prisma.user.update({
+      where: { id },
+      data,
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  async adminUpdateUser(id: string, data: { firstName?: string; lastName?: string; phone?: string | null; career?: string | null }): Promise<UserRecord> {
     return prisma.user.update({
       where: { id },
       data,

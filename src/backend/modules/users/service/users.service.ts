@@ -104,6 +104,30 @@ export class UsersService {
     return true;
   }
 
+  async adminUpdateUser(id: string, rawInput: unknown): Promise<UserProfileView> {
+    if (!rawInput || typeof rawInput !== "object") {
+      throw new AuthError("Input inválido", "INVALID_INPUT", 400);
+    }
+    const obj = rawInput as Record<string, unknown>;
+    const data: { firstName?: string; lastName?: string; phone?: string | null; career?: string | null } = {};
+    if (obj.firstName !== undefined) {
+      if (typeof obj.firstName !== "string" || !obj.firstName.trim()) throw new AuthError("firstName inválido", "INVALID_INPUT", 400);
+      data.firstName = obj.firstName.trim();
+    }
+    if (obj.lastName !== undefined) {
+      if (typeof obj.lastName !== "string" || !obj.lastName.trim()) throw new AuthError("lastName inválido", "INVALID_INPUT", 400);
+      data.lastName = obj.lastName.trim();
+    }
+    if (obj.phone !== undefined) {
+      data.phone = obj.phone === null || obj.phone === "" ? null : String(obj.phone).trim();
+    }
+    if (obj.career !== undefined) {
+      data.career = obj.career === null || obj.career === "" ? null : String(obj.career).trim();
+    }
+    const updated = await this.repo.adminUpdateUser(id, data);
+    return toView(updated);
+  }
+
   async createTutor(rawInput: unknown): Promise<UserProfileView> {
     if (!rawInput || typeof rawInput !== "object") {
       throw new AuthError("Input inválido", "INVALID_INPUT", 400);

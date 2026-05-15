@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["zableke.duckdns.org", "localhost", "localhost:3000"],
+    },
+  },
   // Permite que Next.js acepte peticiones desde estos dominios
   async headers() {
     return [

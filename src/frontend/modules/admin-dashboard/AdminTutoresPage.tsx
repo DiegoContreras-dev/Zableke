@@ -10,9 +10,12 @@ import {
   GraduationCap,
   Loader2,
   Mail,
+  Pencil,
+  Phone,
   Search,
   Shield,
   ShieldOff,
+  Trash2,
   TrendingUp,
   UserCheck,
   UserPlus,
@@ -29,6 +32,8 @@ const TUTORES_QUERY = gql`
       email
       firstName
       lastName
+      phone
+      career
       isActive
       roles
     }
@@ -63,6 +68,26 @@ const REMOVE_ROLE = gql`
       email
       roles
     }
+  }
+`;
+
+const ADMIN_UPDATE_USER = gql`
+  mutation AdminUpdateTutor($id: ID!, $input: UpdateUserAsAdminInput!) {
+    adminUpdateUser(id: $id, input: $input) {
+      id
+      email
+      firstName
+      lastName
+      phone
+      roles
+      isActive
+    }
+  }
+`;
+
+const DELETE_USER = gql`
+  mutation DeleteTutorUser($id: ID!) {
+    deleteUser(id: $id)
   }
 `;
 
@@ -141,6 +166,8 @@ interface UserAccessRow {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string | null;
+  career?: string | null;
   isActive: boolean;
   roles: string[];
 }
@@ -444,9 +471,34 @@ function AddTutorModal({ onCreate, onClose, creating }: {
   );
 }
 
-function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking }: {
-  stat: TutorStat; user?: UserAccessRow; onClose: () => void; onRevoke: () => void; revoking: boolean;
+function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, deleting, onSaveEdit, saving }: {
+  stat: TutorStat; user?: UserAccessRow; onClose: () => void;
+  onRevoke: () => void; revoking: boolean;
+  onDelete: () => void; deleting: boolean;
+  onSaveEdit: (data: { firstName: string; lastName: string; phone: string; career: string }) => Promise<void>;
+  saving: boolean;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "", career: "" });
+  const [careerDropOpen, setCareerDropOpen] = useState(false);
+
+  function openEdit() {
+    setEditForm({
+      firstName: user?.firstName ?? stat.name.split(" ")[0] ?? "",
+      lastName: user?.lastName ?? stat.name.split(" ").slice(1).join(" ") ?? "",
+      phone: user?.phone ?? "",
+      career: user?.career ?? "",
+    });
+    setEditing(true);
+    setConfirmingDelete(false);
+  }
+
+  async function handleSave() {
+    await onSaveEdit(editForm);
+    setEditing(false);
+  }
+
   const lbl = gradeLabel(stat.grade);
   const pct = stat.totalCapacity > 0 ? Math.round(stat.fillRate * 100) : 0;
   return (
@@ -455,7 +507,14 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking }: {
       <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col border-l border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Detalle del tutor</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-1">
+            <button onClick={editing ? () => setEditing(false) : openEdit}
+              className={`rounded-lg p-1.5 hover:bg-slate-100 ${editing ? "text-slate-500" : "text-[#23415B]"}`}
+              title={editing ? "Cancelar edición" : "Editar datos"}>
+              {editing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+            </button>
+            <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Avatar + nombre */}
@@ -466,6 +525,17 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking }: {
             <div>
               <p className="text-base font-semibold text-slate-900">{stat.name}</p>
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><Mail className="h-3 w-3" />{stat.email}</p>
+              {user?.phone && (
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><Phone className="h-3 w-3" />{user.phone}</p>
+              )}
+              {user?.career && (
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><GraduationCap className="h-3 w-3" />{user.career}</p>
+              )}
+              {!user?.phone && !user?.career && !editing && (
+                <button onClick={openEdit} className="mt-1 text-xs text-[#23415B] underline underline-offset-2 hover:text-[#1a3048]">
+                  + Agregar teléfono y carrera
+                </button>
+              )}
               {user && (
                 <span className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${user.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                   {user.isActive ? "Activo" : "Inactivo"}
@@ -473,6 +543,60 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking }: {
               )}
             </div>
           </div>
+
+          {/* Inline edit form */}
+          {editing && (
+            <div className="rounded-xl border border-[#23415B]/20 bg-[#23415B]/5 p-4 space-y-3">
+              <p className="text-xs font-semibold text-[#23415B] uppercase tracking-wider">Editar datos del tutor</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-0.5 block text-xs font-medium text-slate-600">Nombre</label>
+                  <input type="text" value={editForm.firstName} onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-200 py-1.5 px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 focus:border-[#23415B]" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-xs font-medium text-slate-600">Apellido</label>
+                  <input type="text" value={editForm.lastName} onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-200 py-1.5 px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 focus:border-[#23415B]" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-0.5 block text-xs font-medium text-slate-600">Teléfono</label>
+                <input type="text" placeholder="Ej. +56 9 1234 5678" value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 py-1.5 px-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 focus:border-[#23415B]" />
+              </div>
+              <div className="relative">
+                <label className="mb-0.5 block text-xs font-medium text-slate-600">Carrera</label>
+                <button type="button" onClick={() => setCareerDropOpen((v) => !v)}
+                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 py-1.5 px-2.5 text-xs text-left focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 focus:border-[#23415B]">
+                  <span className={editForm.career ? "text-slate-800" : "text-slate-400"}>{editForm.career || "Seleccionar carrera…"}</span>
+                  <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${careerDropOpen ? "rotate-180" : ""}`} />
+                </button>
+                {careerDropOpen && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                    {[...UCN_CAREERS_PRIORITY, ...UCN_CAREERS_OTHERS].map((c) => (
+                      <button key={c} type="button"
+                        onClick={() => { setEditForm((f) => ({ ...f, career: c })); setCareerDropOpen(false); }}
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-[#23415B]/5 ${editForm.career === c ? "bg-[#23415B]/10 text-[#23415B] font-medium" : "text-slate-700"}`}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setEditing(false)} disabled={saving}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button onClick={handleSave} disabled={saving}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#23415B] py-1.5 text-xs font-medium text-white hover:bg-[#1a3048] disabled:opacity-50">
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Guardar
+                </button>
+              </div>
+            </div>
+          )}
           {/* Nota */}
           <div className={`rounded-xl border p-4 ${lbl.bg} ${lbl.border}`}>
             <p className={`text-xs font-semibold uppercase tracking-wider ${lbl.color}`}>Estado de desempeño</p>
@@ -529,12 +653,35 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking }: {
             ))}
           </div>
         </div>
-        <div className="border-t border-slate-100 p-4">
-          <button onClick={onRevoke} disabled={revoking}
+        <div className="border-t border-slate-100 p-4 space-y-2">
+          <button onClick={onRevoke} disabled={revoking || deleting}
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50">
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
             Revocar rol Tutor
           </button>
+          {!confirmingDelete ? (
+            <button onClick={() => setConfirmingDelete(true)} disabled={revoking || deleting}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-rose-300 bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 hover:bg-rose-200 disabled:opacity-50">
+              <Trash2 className="h-4 w-4" />
+              Eliminar tutor
+            </button>
+          ) : (
+            <div className="rounded-lg border border-rose-300 bg-rose-50 p-3">
+              <p className="text-xs font-semibold text-rose-800 mb-2">¿Eliminar permanentemente a {stat.name}?</p>
+              <p className="text-xs text-rose-600 mb-3">Esta acción no se puede deshacer. Se eliminará el usuario y todos sus datos.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmingDelete(false)} disabled={deleting}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button onClick={onDelete} disabled={deleting}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-50">
+                  {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -554,6 +701,8 @@ export function AdminTutoresPage() {
   const [assignRole, { loading: assigning }] = useMutation(ASSIGN_ROLE, { refetchQueries: ["AdminTutoresAccess"] });
   const [removeRole, { loading: revoking }] = useMutation(REMOVE_ROLE, { refetchQueries: ["AdminTutoresAccess"] });
   const [createTutor, { loading: creating }] = useMutation(CREATE_TUTOR, { refetchQueries: ["AdminTutoresAccess"] });
+  const [deleteUserMutation, { loading: deleting }] = useMutation(DELETE_USER, { refetchQueries: ["AdminTutoresAccess"] });
+  const [adminUpdateUserMutation, { loading: saving }] = useMutation(ADMIN_UPDATE_USER, { refetchQueries: ["AdminTutoresAccess"] });
 
   const users = data?.usersAccess ?? [];
   const stats = data?.tutorStats ?? [];
@@ -606,11 +755,31 @@ export function AdminTutoresPage() {
     finally { setConfirmRevoke(null); }
   };
 
+  const handleDelete = async (userId: string) => {
+    try {
+      await deleteUserMutation({ variables: { id: userId } });
+      showToast("ok", "Tutor eliminado correctamente.");
+      setSelectedStat(null);
+    } catch { showToast("err", "No se pudo eliminar el tutor."); }
+  };
+
+  const handleSaveEdit = async (userId: string, data: { firstName: string; lastName: string; phone: string; career: string }) => {
+    try {
+      await adminUpdateUserMutation({ variables: { id: userId, input: {
+        firstName: data.firstName.trim() || undefined,
+        lastName: data.lastName.trim() || undefined,
+        phone: data.phone.trim() || null,
+        career: data.career.trim() || null,
+      } } });
+      showToast("ok", "Datos actualizados correctamente.");
+    } catch { showToast("err", "No se pudieron guardar los cambios."); }
+  };
+
   return (
     <>
       {confirmRevoke && <ConfirmRevokeModal user={confirmRevoke} onConfirm={() => handleRevoke()} onCancel={() => setConfirmRevoke(null)} loading={revoking} />}
       {showAddModal && <AddTutorModal onCreate={handleCreate} onClose={() => setShowAddModal(false)} creating={creating} />}
-      {selectedStat && <TutorDetailPanel stat={selectedStat} user={usersMap.get(selectedStat.email)} onClose={() => setSelectedStat(null)} onRevoke={() => handleRevoke(selectedStat.email)} revoking={revoking} />}
+      {selectedStat && <TutorDetailPanel stat={selectedStat} user={usersMap.get(selectedStat.email)} onClose={() => setSelectedStat(null)} onRevoke={() => handleRevoke(selectedStat.email)} revoking={revoking} onDelete={() => handleDelete(selectedStat.userId)} deleting={deleting} onSaveEdit={(data) => handleSaveEdit(selectedStat.userId, data)} saving={saving} />}
 
       {toast && (
         <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg ${toast.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
