@@ -52,13 +52,42 @@ const graphqlHandler = startServerAndCreateNextHandler<NextRequest, GraphQLConte
   context: async (req: NextRequest) => createContext(req),
 });
 
-export async function POST(request: NextRequest) {
-  return graphqlHandler(request);
+const ALLOWED_ORIGINS = [
+  "http://localhost",
+  "http://localhost:3000",
+  "http://zableke.duckdns.org",
+];
+
+function corsHeaders(origin: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  };
 }
 
-export async function GET() {
-  return NextResponse.json({
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+}
+
+export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const response = await graphqlHandler(request);
+  const headers = corsHeaders(origin);
+  Object.entries(headers).forEach(([k, v]) => response.headers.set(k, v));
+  return response;
+}
+
+export async function GET(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const response = NextResponse.json({
     message: "GraphQL endpoint operativo. Usa POST para queries/mutations.",
     path: "/api/graphql",
   });
+  const headers = corsHeaders(origin);
+  Object.entries(headers).forEach(([k, v]) => response.headers.set(k, v));
+  return response;
 }

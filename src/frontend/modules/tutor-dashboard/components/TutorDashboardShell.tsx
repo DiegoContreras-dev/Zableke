@@ -12,6 +12,7 @@ import {
   Home,
   Menu,
   UserRound,
+  Users,
   X,
   LogOut,
   ChevronDown
@@ -23,6 +24,7 @@ import {
 
 const mainNavItems = [
   { href: "/tutor", label: "Inicio", icon: Home },
+  { href: "/tutor/estudiantes", label: "Mis Estudiantes", icon: Users },
   { href: "/tutor/asistencia", label: "Asistencia", icon: ClipboardCheck },
   { href: "/tutor/historial", label: "Historial", icon: History },
   { href: "/tutor/calendario", label: "Calendario", icon: CalendarDays },

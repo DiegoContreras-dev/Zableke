@@ -14,6 +14,7 @@ export type AuthErrorCode =
   | "EMAIL_NOT_VERIFIED"
   | "EMAIL_MISSING"
   | "USER_NOT_FOUND"
+  | "DUPLICATE_EMAIL"
   | "INVALID_CREDENTIALS";
 
 export class AuthError extends Error {

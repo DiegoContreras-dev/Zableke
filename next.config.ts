@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Permite que Next.js acepte peticiones desde estos dominios
   async headers() {
     return [
       {

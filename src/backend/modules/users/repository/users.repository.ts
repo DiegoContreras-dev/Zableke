@@ -32,4 +32,43 @@ export class UsersRepository {
   async deleteById(id: string): Promise<void> {
     await prisma.user.delete({ where: { id } });
   }
+
+  async findByEmail(email: string): Promise<UserRecord | null> {
+    return prisma.user.findUnique({
+      where: { email },
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  async createTutorUser(data: {
+    firstName: string;
+    lastName: string;
+    rut: string;
+    email: string;
+    career: string;
+    entryYear: number;
+    passwordHash: string;
+    tutorRoleId: string;
+    subject: string;
+  }): Promise<UserRecord> {
+    return prisma.user.create({
+      data: {
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        rut: data.rut,
+        career: data.career,
+        entryYear: data.entryYear,
+        passwordHash: data.passwordHash,
+        isActive: true,
+        roles: {
+          create: { roleId: data.tutorRoleId },
+        },
+        tutorProfile: {
+          create: { department: data.subject, isActive: true },
+        },
+      },
+      include: { roles: { include: { role: true } } },
+    });
+  }
 }

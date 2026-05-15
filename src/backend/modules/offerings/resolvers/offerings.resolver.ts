@@ -78,6 +78,18 @@ export const offeringsTypeDefs = `
     email: String!
   }
 
+  type TutorPerformanceStat {
+    tutorId: ID!
+    userId: String!
+    name: String!
+    email: String!
+    totalSlots: Int!
+    totalStudents: Int!
+    totalCapacity: Int!
+    fillRate: Float!
+    grade: Float!
+  }
+
   input CreateOfferingInput {
     name: String!
     semester: String
@@ -115,6 +127,7 @@ export const offeringsTypeDefs = `
     enrolledStudents(slotId: ID!): [EnrollmentRecord!]!
     attendanceForSlot(slotId: ID!, date: String!): SlotAttendanceView!
     tutorOptions: [TutorOption!]!
+    tutorStats: [TutorPerformanceStat!]!
   }
 
   extend type Mutation {
@@ -165,6 +178,11 @@ export const offeringsResolvers = {
     tutorOptions: async (_: unknown, __: unknown, context: GraphQLContext) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
       return offeringsService.getTutorOptions();
+    },
+
+    tutorStats: async (_: unknown, __: unknown, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_TUTORS");
+      return offeringsService.getTutorStats();
     },
   },
 
