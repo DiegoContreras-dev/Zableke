@@ -12,6 +12,7 @@ export const offeringsTypeDefs = `
     status: String!
     slotsCount: Int!
     enrollmentsCount: Int!
+    targetCareers: [String!]!
     googleFormQuestionId: String
     createdAt: String!
     updatedAt: String!
@@ -81,11 +82,13 @@ export const offeringsTypeDefs = `
   input CreateOfferingInput {
     name: String!
     semester: String
+    targetCareers: [String!]
   }
 
   input UpdateOfferingInput {
     name: String
     status: String
+    targetCareers: [String!]
   }
 
   input AddSlotInput {

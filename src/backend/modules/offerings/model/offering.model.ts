@@ -34,6 +34,7 @@ export interface OfferingView {
   status: string;
   slotsCount: number;
   enrollmentsCount: number;
+  targetCareers: string[];
   googleFormQuestionId: string | null;
   createdAt: string;
   updatedAt: string;

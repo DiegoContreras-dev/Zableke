@@ -45,6 +45,7 @@ export class OfferingsRepository {
   async createOffering(data: {
     name: string;
     semester: string;
+    targetCareers?: string[];
     createdById: string;
   }): Promise<OfferingRecord> {
     return this.db.tutoringOffering.create({
@@ -70,7 +71,7 @@ export class OfferingsRepository {
 
   async updateOffering(
     id: string,
-    data: Partial<{ name: string; status: "OPEN" | "CLOSED"; googleFormQuestionId: string | null }>
+    data: Partial<{ name: string; status: "OPEN" | "CLOSED"; googleFormQuestionId: string | null; targetCareers: string[] }>
   ): Promise<OfferingRecord> {
     return this.db.tutoringOffering.update({
       where: { id },

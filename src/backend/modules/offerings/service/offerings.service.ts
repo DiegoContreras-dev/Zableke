@@ -28,6 +28,7 @@ import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 
 import { ServiceAccountFormsClient } from "@/backend/modules/offerings/google-forms/forms-client";
 import { syncResponses } from "@/backend/modules/offerings/google-forms/response-sync";
+import { prisma } from "@/infrastructure/prisma/client";
 
 function toSlotView(slot: SlotRecord): SlotView {
   return {
@@ -71,6 +72,7 @@ function toOfferingView(offering: OfferingRecord): OfferingView {
     status: offering.status,
     slotsCount: offering._count.slots,
     enrollmentsCount: offering._count.enrollments,
+    targetCareers: (offering as OfferingRecord & { targetCareers?: string[] }).targetCareers ?? [],
     googleFormQuestionId: offering.googleFormQuestionId,
     createdAt: offering.createdAt.toISOString(),
     updatedAt: offering.updatedAt.toISOString(),
@@ -107,6 +109,13 @@ function isAdmin(user: CurrentUserLike): boolean {
   return user.roles.includes("ADMIN");
 }
 
+type GoogleFormsBatchReply = {
+  createItem?: {
+    itemId?: string;
+    questionId?: Array<{ questionId?: string }>;
+  };
+};
+
 export class OfferingsService {
   constructor(private readonly repo = new OfferingsRepository()) {}
 
@@ -115,6 +124,7 @@ export class OfferingsService {
     const offering = await this.repo.createOffering({
       name: input.name,
       semester: input.semester ?? getCurrentSemester(),
+      targetCareers: input.targetCareers ?? [],
       createdById,
     });
     return toOfferingView(offering);
@@ -289,29 +299,90 @@ export class OfferingsService {
     }
 
     const client = new ServiceAccountFormsClient();
-    const { buildPhase1Requests, buildPhase2Requests } = await import("@/backend/modules/offerings/google-forms/form-builder");
-
-    const phase1Requests = buildPhase1Requests(openOfferings);
-    const phase1Result = await client.batchUpdateForm(existingFormId, phase1Requests);
-
-    // phase1Result.replies contains the responses.
-    // Index 0: updateFormInfo
-    // Index 1,2,3,4,5: text questions
-    // Index 6: Main Selection page break
-    // Index 7...: Offering page breaks
-    const replies = (phase1Result.replies as any[]) || [];
-    const offeringSectionIds: string[] = [];
     
-    // We expect N offering sections starting at index 7.
-    for (let i = 0; i < openOfferings.length; i++) {
-       const reply = replies[7 + i];
-       const itemId = reply?.createItem?.itemId;
-       if (!itemId) throw new AuthError("Failed to read section ID from Google Forms API", "GOOGLE_VERIFY_ERROR", 502);
-       offeringSectionIds.push(itemId);
+    // Remember initial items (like the default question) so we can delete them at the end
+    const initialForm = await client.getForm(existingFormId);
+    const initialItems = Array.isArray(initialForm.items)
+      ? (initialForm.items as Array<{ itemId?: string }>)
+      : [];
+    const initialItemIds = initialItems.map((item) => item.itemId).filter((itemId): itemId is string => Boolean(itemId));
+
+    const { buildPhase1Requests, buildPhase2Requests, groupOfferingsByCareers } = await import("@/backend/modules/offerings/google-forms/form-builder");
+    const allCareers = await prisma.career.findMany({ orderBy: { name: "asc" } });
+
+    // Group offerings by career for career-based form routing
+    const careerGroups = groupOfferingsByCareers(openOfferings, allCareers);
+    if (careerGroups.length === 0) {
+      throw new AuthError(
+        "No offerings have targetCareers assigned. Please assign careers to offerings before generating the form.",
+        "INVALID_STATE",
+        400
+      );
     }
 
-    const phase2 = buildPhase2Requests(openOfferings, offeringSectionIds);
+    const phase1Requests = buildPhase1Requests(careerGroups, allCareers);
+    const phase1Result = await client.batchUpdateForm(existingFormId, phase1Requests);
+
+    // phase1Result.replies layout:
+    // [0] updateFormInfo
+    // [1] Commitment question
+    // [2] Page break "Datos Personales"
+    // [3] Nombre y Apellidos
+    // [4] RUT
+    // [5] Correo electrónico
+    // [6] Número de teléfono
+    // [7] Carrera (radio question)
+    // [8] Page break career[0]
+    // [9] Page break career[1]
+    // ...
+    const replies = Array.isArray(phase1Result.replies)
+      ? (phase1Result.replies as GoogleFormsBatchReply[])
+      : [];
+
+    // Extract the Carrera question's questionId and itemId for Phase 2 routing
+    const carreraReply = replies[7];
+    const carreraQuestionId = carreraReply?.createItem?.questionId?.[0]?.questionId;
+    const carreraItemId = carreraReply?.createItem?.itemId;
+    if (!carreraItemId) {
+      throw new AuthError("Failed to read Carrera item ID from Google Forms API", "GOOGLE_VERIFY_ERROR", 502);
+    }
+
+    // Extract section IDs for each career group (starting at reply index 8)
+    const careerSectionIds: string[] = [];
+    for (let i = 0; i < careerGroups.length; i++) {
+      const reply = replies[8 + i];
+      const itemId = reply?.createItem?.itemId;
+      if (!itemId) throw new AuthError("Failed to read career section ID from Google Forms API", "GOOGLE_VERIFY_ERROR", 502);
+      careerSectionIds.push(itemId);
+    }
+
+    const phase2 = buildPhase2Requests(careerGroups, careerSectionIds, carreraQuestionId ?? "", carreraItemId, allCareers);
     await client.batchUpdateForm(existingFormId, phase2.requests);
+
+    // ── Phase 3: Cleanup original items ──
+    // Google Forms requires at least one item, so we couldn't delete the default question initially.
+    // Now that our items are inserted, we safely find the original items and delete them by index.
+    const finalForm = await client.getForm(existingFormId);
+    const currentItems = Array.isArray(finalForm.items)
+      ? (finalForm.items as Array<{ itemId?: string }>)
+      : [];
+    const deleteRequests: unknown[] = [];
+    
+    // Delete from bottom to top so indices don't shift during deletion
+    for (let i = currentItems.length - 1; i >= 0; i--) {
+      const itemId = currentItems[i].itemId;
+      if (itemId && initialItemIds.includes(itemId)) {
+        deleteRequests.push({
+          deleteItem: {
+            location: { index: i }
+          }
+        });
+      }
+    }
+    
+    if (deleteRequests.length > 0) {
+      await client.batchUpdateForm(existingFormId, deleteRequests);
+    }
 
     const formUrl = `https://docs.google.com/forms/d/${existingFormId}/viewform`;
     const formEditUrl = `https://docs.google.com/forms/d/${existingFormId}/edit`;

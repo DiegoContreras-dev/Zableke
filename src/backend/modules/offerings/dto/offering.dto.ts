@@ -7,11 +7,13 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 export interface CreateOfferingInput {
   name: string;
   semester?: string;
+  targetCareers?: string[];
 }
 
 export interface UpdateOfferingInput {
   name?: string;
   status?: "OPEN" | "CLOSED";
+  targetCareers?: string[];
 }
 
 export interface CreateSlotInput {
@@ -76,7 +78,21 @@ export function parseCreateOfferingInput(raw: unknown): CreateOfferingInput {
   return {
     name: readRequiredString(obj, "name"),
     semester: parseSemester(obj.semester),
+    targetCareers: parseStringArray(obj.targetCareers),
   };
+}
+
+function parseStringArray(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value)) {
+    throw new AuthError("targetCareers must be an array of strings", "INVALID_INPUT", 400);
+  }
+  return value.map((v) => {
+    if (typeof v !== "string" || !v.trim()) {
+      throw new AuthError("Each career in targetCareers must be a non-empty string", "INVALID_INPUT", 400);
+    }
+    return v.trim();
+  });
 }
 
 export function parseUpdateOfferingInput(raw: unknown): UpdateOfferingInput {
@@ -94,6 +110,9 @@ export function parseUpdateOfferingInput(raw: unknown): UpdateOfferingInput {
       throw new AuthError("status must be OPEN or CLOSED", "INVALID_INPUT", 400);
     }
     result.status = status;
+  }
+  if (obj.targetCareers !== undefined) {
+    result.targetCareers = parseStringArray(obj.targetCareers);
   }
 
   return result;

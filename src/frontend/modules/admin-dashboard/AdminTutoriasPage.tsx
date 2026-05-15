@@ -7,6 +7,7 @@ import { AlertTriangle, ClipboardList, ExternalLink, LoaderCircle, Plus, Search,
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
+import { CareersManagerModal } from "./CareersManagerModal";
 
 const OFFERINGS = gql`
   query AdminOfferings($semester: String) {
@@ -22,6 +23,11 @@ const OFFERINGS = gql`
       tutorId
       name
       email
+    }
+    careers {
+      id
+      name
+      schoolName
     }
   }
 `;
@@ -76,6 +82,12 @@ interface TutorOption {
   email: string;
 }
 
+interface CareerOption {
+  id: string;
+  name: string;
+  schoolName: string;
+}
+
 function currentSemester(): string {
   const now = new Date();
   return `${now.getFullYear()}-${now.getMonth() <= 6 ? 1 : 2}`;
@@ -99,6 +111,8 @@ const blockOptions = [
   { label: "F", startTime: "18:00", endTime: "19:30" },
 ] as const;
 
+
+
 function blockByLabel(label: string) {
   return blockOptions.find((block) => block.label === label) ?? blockOptions[0];
 }
@@ -108,6 +122,7 @@ export function AdminTutoriasPage() {
   const [semester, setSemester] = useState(currentSemester());
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isManagingCareers, setIsManagingCareers] = useState(false);
   const [name, setName] = useState("");
   const [initialSlot, setInitialSlot] = useState({
     tutorId: "",
@@ -116,12 +131,14 @@ export function AdminTutoriasPage() {
     maxCapacity: 30,
     roomName: "",
   });
+  const [targetCareers, setTargetCareers] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
   const { data, loading, error } = useQuery<{
     offerings: OfferingRow[];
     tutorOptions: TutorOption[];
+    careers: CareerOption[];
   }>(OFFERINGS, {
     variables: { semester },
     fetchPolicy: "cache-and-network",
@@ -142,6 +159,7 @@ export function AdminTutoriasPage() {
     return offerings.filter((offering) => offering.name.toLowerCase().includes(needle));
   }, [offerings, searchTerm]);
   const tutors = data?.tutorOptions ?? [];
+  const careerOptions = data?.careers ?? [];
   const totalEnrollments = useMemo(
     () => filteredOfferings.reduce((sum, offering) => sum + offering.enrollmentsCount, 0),
     [filteredOfferings]
@@ -162,9 +180,13 @@ export function AdminTutoriasPage() {
       setErrorMessage("Selecciona el tutor que realizará la tutoría.");
       return;
     }
+    if (targetCareers.length === 0) {
+      setErrorMessage("Debes seleccionar al menos una carrera objetivo para la tutoría.");
+      return;
+    }
     const selectedBlock = blockByLabel(initialSlot.block);
     try {
-      const result = await createOffering({ variables: { input: { name: name.trim(), semester } } });
+      const result = await createOffering({ variables: { input: { name: name.trim(), semester, targetCareers } } });
       const offeringId = (result.data as { createOffering?: { id: string } } | undefined)?.createOffering?.id;
       if (!offeringId) {
         setErrorMessage("La tutoría se creó, pero no fue posible leer su identificador.");
@@ -184,6 +206,7 @@ export function AdminTutoriasPage() {
         },
       });
       setName("");
+      setTargetCareers([]);
       setIsCreating(false);
       router.push(`/admin/tutorias/${offeringId}`);
     } catch (err: unknown) {
@@ -268,6 +291,13 @@ export function AdminTutoriasPage() {
           >
             {generatingForm ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
             Generar Form
+          </button>
+          <button
+            onClick={() => setIsManagingCareers(true)}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <BookOpen className="h-4 w-4" />
+            Carreras Ofertadas
           </button>
           <button
             onClick={() => setIsCreating(true)}
@@ -498,6 +528,25 @@ export function AdminTutoriasPage() {
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 />
               </label>
+              <div className="sm:col-span-2">
+                <span className="block text-sm font-medium text-slate-700">Carreras Objetivo</span>
+                <div className="mt-1 flex max-h-40 flex-col gap-2 overflow-y-auto rounded-md border border-slate-300 bg-white p-2">
+                  {careerOptions.map((career) => (
+                    <label key={career.id} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={targetCareers.includes(career.name)}
+                        onChange={(e) => {
+                          if (e.target.checked) setTargetCareers((prev) => [...prev, career.name]);
+                          else setTargetCareers((prev) => prev.filter((c) => c !== career.name));
+                        }}
+                        className="rounded border-slate-300 text-[#23415B] focus:ring-[#23415B]"
+                      />
+                      {career.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
             {tutors.length === 0 ? (
               <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -529,6 +578,7 @@ export function AdminTutoriasPage() {
           </form>
         </div>
       )}
+      {isManagingCareers && <CareersManagerModal onClose={() => setIsManagingCareers(false)} />}
     </div>
   );
 }

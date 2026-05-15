@@ -117,6 +117,7 @@ model TutoringOffering {
   name                 String
   semester             String
   status               OfferingStatus @default(OPEN)
+  targetCareers        String[]       @default([])
   googleFormQuestionId String?
   createdById          String
   createdAt            DateTime       @default(now())
@@ -187,6 +188,16 @@ model GoogleFormLink {
   updatedAt    DateTime  @updatedAt
 
   @@map("google_form_links")
+}
+
+model Career {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  schoolName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("careers")
 }
 
 model Attendance {

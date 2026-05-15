@@ -82,7 +82,10 @@ export async function syncResponses(params: {
     
     let studentName = "";
     let studentRut = "";
-    let studentEmail = "";
+    // Try native respondentEmail first
+    let studentEmail = typeof response.respondentEmail === "string"
+      ? response.respondentEmail.trim().toLowerCase()
+      : "";
     let studentCareer = "";
     let studentPhone = "";
     const selectedSlots: string[] = [];
@@ -95,24 +98,36 @@ export async function syncResponses(params: {
         studentName = answer.value;
       } else if (lowerTitle.includes("rut")) {
         studentRut = answer.value;
-      } else if (lowerTitle.includes("correo")) {
-        studentEmail = answer.value.toLowerCase();
       } else if (lowerTitle.includes("carrera")) {
         studentCareer = answer.value;
       } else if (lowerTitle.includes("teléfono") || lowerTitle.includes("telefono")) {
         studentPhone = answer.value;
-      } else if (title === "¿A qué tutoría deseas inscribirte?") {
-        // Just the section router, ignore
+      } else if (lowerTitle.includes("compromiso")) {
+        // Commitment question, ignore
+      } else if (lowerTitle.includes("asignatura")) {
+        // Slot selection from "Asignaturas" question
+        selectedSlots.push(answer.value);
       } else {
-        // It's likely a slot selection
-        if (answer.value !== "No me interesa") {
+        // Fallback: check if value looks like an email (for correo fields)
+        if (!studentEmail && answer.value.includes("@")) {
+          studentEmail = answer.value.toLowerCase();
+        } else if (answer.value !== "No me interesa") {
           selectedSlots.push(answer.value);
         }
       }
     }
 
+    console.log(`[sync] Response ${responseId}: name="${studentName}" email="${studentEmail}" career="${studentCareer}" slots=[${selectedSlots.join(", ")}]`);
+
     if (!studentName || !studentEmail.includes("@")) {
-      errors.push(`Respuesta ${responseId}: datos personales incompletos`);
+      const reason = !studentName ? "nombre vacío" : "email inválido o vacío";
+      errors.push(`Respuesta ${responseId}: ${reason} (name="${studentName}", email="${studentEmail}")`);
+      skipped += 1;
+      continue;
+    }
+
+    if (selectedSlots.length === 0) {
+      errors.push(`Respuesta ${responseId}: no se seleccionó ninguna asignatura`);
       skipped += 1;
       continue;
     }
@@ -120,6 +135,9 @@ export async function syncResponses(params: {
     for (const slotLabel of selectedSlots) {
       const slot = slotByLabel.get(slotLabel);
       if (!slot) {
+        console.log(`[sync] Response ${responseId}: no slot match for label "${slotLabel}"`);
+        console.log(`[sync] Available labels: ${[...slotByLabel.keys()].join(" | ")}`);
+        errors.push(`Respuesta ${responseId}: etiqueta de horario no encontrada: "${slotLabel}"`);
         continue;
       }
 
