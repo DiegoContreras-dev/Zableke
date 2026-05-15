@@ -60,6 +60,8 @@ const ALLOWED_ORIGINS = [
   "http://localhost",
   "http://localhost:3000",
   "http://zableke.duckdns.org",
+  "http://172.16.13.103",
+  "http://172.16.13.103:3000"
 ];
 
 function corsHeaders(origin: string | null): Record<string, string> {

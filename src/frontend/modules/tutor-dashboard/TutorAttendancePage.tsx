@@ -7,7 +7,7 @@ import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 
-import { type StudentAttendance } from "./data";
+import { attendanceStudents as demoStudents, attendanceDefaults, type StudentAttendance } from "./data";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { StudentAttendanceItem } from "./components/StudentAttendanceItem";
 
@@ -93,13 +93,13 @@ type FormErrors = Partial<Record<keyof FormState | "students", string>>;
 
 const FORM_DEFAULTS: FormState = {
   scheduleId: "",
-  tutorName: "",
-  sessionType: "Programada",
-  subject: "",
-  section: "",
-  slot: "",
-  room: "",
-  modality: "Presencial",
+  tutorName: attendanceDefaults.tutorName,
+  sessionType: attendanceDefaults.sessionType,
+  subject: attendanceDefaults.subject,
+  section: attendanceDefaults.section,
+  slot: attendanceDefaults.slot,
+  room: attendanceDefaults.room,
+  modality: attendanceDefaults.modality,
   date: "",
   objectives: "",
   appreciation: "",
@@ -190,10 +190,10 @@ export function TutorAttendancePage() {
   const [recordBulkAttendance] = useMutation(RECORD_BULK_ATTENDANCE);
 
   const scheduleOptions = useMemo(() => slotsData?.myTutoringSlots ?? [], [slotsData?.myTutoringSlots]);
-  const attendanceStudents = useMemo(
-    () => (attendanceData?.attendanceForSlot.students ?? []).map(slotToStudent),
-    [attendanceData]
-  );
+  const attendanceStudents = useMemo(() => {
+    if (!form.scheduleId) return demoStudents;
+    return (attendanceData?.attendanceForSlot.students ?? []).map(slotToStudent);
+  }, [attendanceData, form.scheduleId]);
 
   useEffect(() => {
     const slotId = searchParams.get("slot");

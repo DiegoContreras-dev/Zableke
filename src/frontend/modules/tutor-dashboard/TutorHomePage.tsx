@@ -7,7 +7,7 @@ import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { SessionRow } from "./components/SessionRow";
-import type { TodaySession } from "./data";
+import { todaySessions, type TodaySession } from "./data";
 
 const MY_TUTORING_SLOTS = gql`
   query MyTutoringSlots {
@@ -75,15 +75,16 @@ export function TutorHomePage() {
   }, []);
 
   const sessions = useMemo(() => {
-    if (!data?.myTutoringSlots) return [];
+    if (!data?.myTutoringSlots?.length) return todaySessions;
     const today = dayByIndex[new Date().getDay()];
-    return data.myTutoringSlots
+    const live = data.myTutoringSlots
       .filter((s) => s.dayOfWeek === today)
       .slice(0, 2)
       .map(toTodaySession);
+    return live.length > 0 ? live : todaySessions;
   }, [data]);
 
-  const totalSchedules = data?.myTutoringSlots?.length ?? 0;
+  const totalSchedules = data?.myTutoringSlots?.length ?? todaySessions.length;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-x-hidden lg:gap-4.5">
