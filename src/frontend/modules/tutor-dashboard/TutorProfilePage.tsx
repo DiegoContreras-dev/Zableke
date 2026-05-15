@@ -149,8 +149,7 @@ export function TutorProfilePage() {
       .finally(() => setIsSaving(false));
   };
 
-  const applyAvatar = () => {
-    if (temporaryAvatarUrl) {
+  const applyAvatar = () => {    if (temporaryAvatarUrl) {
       setAvatarUrl(temporaryAvatarUrl);
       localStorage.setItem('tutor_avatar', temporaryAvatarUrl);
       
@@ -386,6 +385,7 @@ export function TutorProfilePage() {
               </button>
             </div>
           </form>
+
         </div>
       </div>
 

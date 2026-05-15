@@ -70,3 +70,15 @@ export interface TutorOptionView {
   name: string;
   email: string;
 }
+
+export interface TutorStatView {
+  tutorId: string;
+  userId: string;
+  name: string;
+  email: string;
+  totalSlots: number;
+  totalStudents: number;
+  totalCapacity: number;
+  fillRate: number;
+  grade: number;
+}

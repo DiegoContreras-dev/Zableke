@@ -20,6 +20,8 @@ export const rolesTypeDefs = `
     email: String!
     firstName: String!
     lastName: String!
+    phone: String
+    career: String
     isActive: Boolean!
     roles: [String!]!
     permissions: [String!]!

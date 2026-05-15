@@ -297,6 +297,26 @@ export class OfferingsRepository {
     return this.db.attendance.findMany({ where: { scheduleId } });
   }
 
+  async findTutorStats(): Promise<
+    Array<{
+      id: string;
+      userId: string;
+      user: { firstName: string; lastName: string; email: string };
+      _count: { tutoringSlots: number };
+      tutoringSlots: Array<{ maxCapacity: number; _count: { enrollments: number } }>;
+    }>
+  > {
+    return this.db.tutor.findMany({
+      where: { isActive: true, user: { isActive: true } },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+        _count: { select: { tutoringSlots: true } },
+        tutoringSlots: { select: { maxCapacity: true, _count: { select: { enrollments: true } } } },
+      },
+      orderBy: { user: { firstName: "asc" } },
+    });
+  }
+
   private offeringInclude() {
     return {
       slots: {

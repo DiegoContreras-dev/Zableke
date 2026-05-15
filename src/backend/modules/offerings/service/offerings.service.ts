@@ -221,6 +221,27 @@ export class OfferingsService {
     return tutors.map(toTutorOptionView);
   }
 
+  async getTutorStats(): Promise<import("@/backend/modules/offerings/model/offering.model").TutorStatView[]> {
+    const tutors = await this.repo.findTutorStats();
+    return tutors.map((t) => {
+      const totalStudents = t.tutoringSlots.reduce((s, sl) => s + sl._count.enrollments, 0);
+      const totalCapacity = t.tutoringSlots.reduce((s, sl) => s + sl.maxCapacity, 0);
+      const fillRate = totalCapacity > 0 ? totalStudents / totalCapacity : 0;
+      const grade = totalCapacity > 0 ? Math.max(1.0, Math.min(7.0, Math.round((fillRate * 6 + 1) * 10) / 10)) : 0;
+      return {
+        tutorId: t.id,
+        userId: t.userId,
+        name: `${t.user.firstName} ${t.user.lastName}`,
+        email: t.user.email,
+        totalSlots: t._count.tutoringSlots,
+        totalStudents,
+        totalCapacity,
+        fillRate,
+        grade,
+      };
+    });
+  }
+
   async createEnrollment(rawInput: unknown): Promise<EnrollmentView> {
     const input = parseCreateEnrollmentInput(rawInput);
     const data = await this.prepareEnrollment(input);

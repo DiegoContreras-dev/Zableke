@@ -1,4 +1,4 @@
-import { requireRole, requireUser } from "@/backend/common/guards/role.guard";
+import { requirePermission, requireRole, requireUser } from "@/backend/common/guards/role.guard";
 import { UsersService } from "@/backend/modules/users/service/users.service";
 import type { GraphQLContext } from "@/graphql/context";
 
@@ -25,6 +25,22 @@ export const usersTypeDefs = `
     linkedinUrl: String
   }
 
+  input CreateTutorInput {
+    firstName: String!
+    lastName: String!
+    rut: String!
+    email: String!
+    career: String!
+    entryYear: Int!
+  }
+
+  input UpdateUserAsAdminInput {
+    firstName: String
+    lastName: String
+    phone: String
+    career: String
+  }
+
   extend type Query {
     me: UserProfile!
   }
@@ -32,6 +48,8 @@ export const usersTypeDefs = `
   extend type Mutation {
     updateMyProfile(input: UpdateProfileInput!): UserProfile!
     deleteUser(id: ID!): Boolean!
+    createTutor(input: CreateTutorInput!): UserProfile!
+    adminUpdateUser(id: ID!, input: UpdateUserAsAdminInput!): UserProfile!
   }
 `;
 
@@ -58,6 +76,22 @@ export const usersResolvers = {
     ) => {
       requireRole(context.currentUser, ["ADMIN"]);
       return usersService.deleteUser(args.id);
+    },
+    createTutor: async (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphQLContext
+    ) => {
+      requirePermission(context.currentUser, "MANAGE_TUTORS");
+      return usersService.createTutor(args.input);
+    },
+    adminUpdateUser: async (
+      _: unknown,
+      args: { id: string; input: unknown },
+      context: GraphQLContext
+    ) => {
+      requireRole(context.currentUser, ["ADMIN"]);
+      return usersService.adminUpdateUser(args.id, args.input);
     },
   },
 };
