@@ -56,7 +56,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const tutorDemoUser = await prisma.user.upsert({
     where: { email: "tutor@alumnos.ucn.cl" },
     update: {
       firstName: "Tutor",
@@ -68,15 +68,19 @@ async function main() {
       firstName: "Tutor",
       lastName: "Demo",
       isActive: true,
-      roles: {
-        create: [{ roleId: tutorRole.id }],
-      },
-      tutorProfile: {
-        create: {
-          department: "General",
-        },
-      },
     },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: tutorDemoUser.id, roleId: tutorRole.id } },
+    update: {},
+    create: { userId: tutorDemoUser.id, roleId: tutorRole.id },
+  });
+
+  await prisma.tutor.upsert({
+    where: { userId: tutorDemoUser.id },
+    update: {},
+    create: { userId: tutorDemoUser.id, department: "General" },
   });
 
   const victorPasswordHash = await bcrypt.hash("victor123", 10);
