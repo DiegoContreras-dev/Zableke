@@ -74,8 +74,8 @@ export const usersResolvers = {
       args: { id: string },
       context: GraphQLContext
     ) => {
-      requireRole(context.currentUser, ["ADMIN"]);
-      return usersService.deleteUser(args.id);
+      const user = requireRole(context.currentUser, ["ADMIN"]);
+      return usersService.deleteUser(args.id, user.id);
     },
     createTutor: async (
       _: unknown,

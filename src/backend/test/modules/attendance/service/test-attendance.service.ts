@@ -209,7 +209,7 @@ test("AttendanceService.recordBulkAttendance acepta status en minúscula (normal
 test("AttendanceService.getAttendancesBySchedule retorna AttendanceView[]", async () => {
   const service = new AttendanceService(makeRepoMock() as never);
 
-  const result = await service.getAttendancesBySchedule("sch-1");
+  const result = await service.getAttendancesBySchedule("sch-1", TUTOR_USER);
 
   assert.equal(result.length, 1);
   assert.equal(result[0]?.scheduleId, "sch-1");
@@ -222,7 +222,7 @@ test("AttendanceService.getAttendancesBySchedule retorna array vacío si no hay 
   const repoMock = makeRepoMock({ findBySchedule: async () => [] });
   const service = new AttendanceService(repoMock as never);
 
-  const result = await service.getAttendancesBySchedule("sch-99");
+  const result = await service.getAttendancesBySchedule("sch-99", ADMIN_USER);
 
   assert.deepEqual(result, []);
 });

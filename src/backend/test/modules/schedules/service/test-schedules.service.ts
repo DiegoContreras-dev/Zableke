@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { AuthError } from "@/backend/common/errors/auth.error";
+import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 import { SchedulesService } from "@/backend/modules/schedules/service/schedules.service";
+
+const TUTOR_USER: CurrentUserLike = { id: "user-1", roles: ["TUTOR"] };
+const ADMIN_USER: CurrentUserLike = { id: "admin-1", roles: ["ADMIN"] };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,7 +102,7 @@ test("SchedulesService.createSchedule crea y retorna el schedule", async () => {
       startsAt: "2026-05-01T09:00:00Z",
       endsAt: "2026-05-01T10:30:00Z",
     },
-    "user-1"
+    TUTOR_USER
   );
 
   assert.equal(result.title, "Álgebra Lineal");
@@ -118,7 +122,7 @@ test("SchedulesService.createSchedule lanza INVALID_INPUT con tutorId vacío", a
           startsAt: "2026-05-01T09:00:00Z",
           endsAt: "2026-05-01T10:30:00Z",
         },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
@@ -137,7 +141,7 @@ test("SchedulesService.createSchedule lanza INVALID_INPUT cuando endsAt <= start
           startsAt: "2026-05-01T10:00:00Z",
           endsAt: "2026-05-01T09:00:00Z",
         },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
   );
@@ -162,7 +166,7 @@ test("SchedulesService.createSchedule lanza TUTOR_SCHEDULE_CONFLICT cuando hay c
           startsAt: "2026-05-01T09:00:00Z",
           endsAt: "2026-05-01T10:30:00Z",
         },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "TUTOR_SCHEDULE_CONFLICT"
   );
@@ -187,7 +191,7 @@ test("SchedulesService.createSchedule lanza ROOM_SCHEDULE_CONFLICT cuando hay co
           startsAt: "2026-05-01T09:00:00Z",
           endsAt: "2026-05-01T10:30:00Z",
         },
-        "user-1"
+        TUTOR_USER
       ),
     (err) => err instanceof AuthError && err.code === "ROOM_SCHEDULE_CONFLICT"
   );
@@ -199,7 +203,7 @@ test("SchedulesService.updateSchedule lanza RESOURCE_NOT_FOUND para schedule ine
   const service = new SchedulesService(makeRepoMock() as never);
 
   await assert.rejects(
-    () => service.updateSchedule({ id: "no-existe", title: "Nuevo" }),
+    () => service.updateSchedule({ id: "no-existe", title: "Nuevo" }, ADMIN_USER),
     (err) => err instanceof AuthError && err.code === "RESOURCE_NOT_FOUND"
   );
 });
@@ -211,7 +215,7 @@ test("SchedulesService.updateSchedule lanza INVALID_STATE si el schedule no est�
   const service = new SchedulesService(repoMock as never);
 
   await assert.rejects(
-    () => service.updateSchedule({ id: "sch-1", title: "Intento actualizar cancelado" }),
+    () => service.updateSchedule({ id: "sch-1", title: "Intento actualizar cancelado" }, ADMIN_USER),
     (err) => err instanceof AuthError && err.code === "INVALID_STATE"
   );
 });
@@ -219,7 +223,7 @@ test("SchedulesService.updateSchedule lanza INVALID_STATE si el schedule no est�
 test("SchedulesService.updateSchedule retorna schedule actualizado", async () => {
   const service = new SchedulesService(makeRepoMock() as never);
 
-  const result = await service.updateSchedule({ id: "sch-1", title: "Título actualizado" });
+  const result = await service.updateSchedule({ id: "sch-1", title: "Título actualizado" }, ADMIN_USER);
 
   assert.ok(result.id);
   assert.equal(result.status, "ACTIVE");
@@ -231,7 +235,7 @@ test("SchedulesService.cancelSchedule lanza RESOURCE_NOT_FOUND para id inexisten
   const service = new SchedulesService(makeRepoMock() as never);
 
   await assert.rejects(
-    () => service.cancelSchedule("no-existe"),
+    () => service.cancelSchedule("no-existe", ADMIN_USER),
     (err) => err instanceof AuthError && err.code === "RESOURCE_NOT_FOUND"
   );
 });
@@ -243,7 +247,7 @@ test("SchedulesService.cancelSchedule lanza INVALID_STATE si ya está cancelado"
   const service = new SchedulesService(repoMock as never);
 
   await assert.rejects(
-    () => service.cancelSchedule("sch-1"),
+    () => service.cancelSchedule("sch-1", ADMIN_USER),
     (err) => err instanceof AuthError && err.code === "INVALID_STATE"
   );
 });
@@ -251,7 +255,7 @@ test("SchedulesService.cancelSchedule lanza INVALID_STATE si ya está cancelado"
 test("SchedulesService.cancelSchedule retorna schedule con status CANCELLED", async () => {
   const service = new SchedulesService(makeRepoMock() as never);
 
-  const result = await service.cancelSchedule("sch-1");
+  const result = await service.cancelSchedule("sch-1", ADMIN_USER);
 
   assert.equal(result.status, "CANCELLED");
 });

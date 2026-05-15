@@ -23,9 +23,20 @@ export async function createContext(
 
   let currentUser: CurrentUserContext | null = null;
 
+  // Read token from Authorization header or HttpOnly session cookie
   const authHeader = request?.headers?.get("authorization") ?? null;
-  const token =
-    authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const cookieHeader = request?.headers?.get("cookie") ?? "";
+  const sessionCookie = cookieHeader
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith("zableke_session="));
+  const cookieToken = sessionCookie
+    ? decodeURIComponent(sessionCookie.slice("zableke_session=".length))
+    : null;
+
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : cookieToken;
 
   if (token) {
     const payload = await verifyToken(token);

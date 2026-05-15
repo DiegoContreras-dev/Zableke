@@ -1,38 +1,43 @@
-const SESSION_COOKIE_NAME = "zableke_session";
+const LOGGED_IN_COOKIE = "zableke_logged_in";
 
-function buildCookieAttributes(): string {
-  const attributes = ["Path=/", "SameSite=Lax"];
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:"
-  ) {
-    attributes.push("Secure");
-  }
-  // Sin Max-Age ni Expires → cookie de sesión, se borra al cerrar el navegador
-  return attributes.join("; ");
+/**
+ * Creates a session by sending the JWT to the server, which stores it
+ * in an HttpOnly cookie (inaccessible to JavaScript / XSS attacks).
+ */
+export async function createTutorSession(token: string): Promise<void> {
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    credentials: "same-origin",
+  });
 }
 
-export function createTutorSession(token: string): void {
-  if (typeof document === "undefined") return;
-  document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; ${buildCookieAttributes()}`;
+/**
+ * Clears the session by asking the server to delete the HttpOnly cookie.
+ */
+export async function clearTutorSession(): Promise<void> {
+  await fetch("/api/auth/session", {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
 }
 
-export function clearTutorSession(): void {
-  if (typeof document === "undefined") return;
-  document.cookie = `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0`;
-}
-
+/**
+ * Checks if the user appears to be logged in by reading the
+ * non-HttpOnly marker cookie (the actual JWT is HttpOnly and
+ * cannot be read from JavaScript).
+ */
 export function hasTutorSession(): boolean {
-  return getSessionToken() !== null;
+  if (typeof document === "undefined") return false;
+  return document.cookie.includes(`${LOGGED_IN_COOKIE}=1`);
 }
 
+/**
+ * @deprecated Token is now stored in an HttpOnly cookie and sent
+ * automatically by the browser. This function is kept for backward
+ * compatibility but always returns null.
+ */
 export function getSessionToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const pair = document.cookie
-    .split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`));
-  if (!pair) return null;
-  const value = pair.slice(SESSION_COOKIE_NAME.length + 1);
-  return value.length > 0 ? decodeURIComponent(value) : null;
+  return null;
 }

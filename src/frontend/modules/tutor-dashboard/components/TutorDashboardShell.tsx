@@ -97,8 +97,8 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
     }
   }, [hasActiveSession, router]);
 
-  const handleLogout = () => {
-    clearTutorSession();
+  const handleLogout = async () => {
+    await clearTutorSession();
     setHasActiveSession(false);
     setIsProfileDropdownOpen(false);
     setIsMobileMenuOpen(false);

@@ -122,7 +122,20 @@ export class AttendanceService {
     return results.map(toView);
   }
 
-  async getAttendancesBySchedule(scheduleId: string): Promise<AttendanceView[]> {
+  async getAttendancesBySchedule(scheduleId: string, user: CurrentUserLike): Promise<AttendanceView[]> {
+    // SECURITY: Only schedule owner or admin can view attendance
+    const isAdmin = user.roles.includes("ADMIN");
+    if (!isAdmin) {
+      const isOwner = await this.repo.verifyScheduleOwnership(scheduleId, user.id);
+      if (!isOwner) {
+        throw new AuthError(
+          "You can only view attendance for your own schedules",
+          "FORBIDDEN",
+          403
+        );
+      }
+    }
+
     const records = await this.repo.findBySchedule(scheduleId);
     return records.map(toView);
   }

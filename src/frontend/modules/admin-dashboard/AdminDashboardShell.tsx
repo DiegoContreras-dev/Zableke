@@ -77,8 +77,8 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
     }
   }, [hasActiveSession, router]);
 
-  const handleLogout = () => {
-    clearTutorSession();
+  const handleLogout = async () => {
+    await clearTutorSession();
     setHasActiveSession(false);
     setIsProfileDropdownOpen(false);
     setIsMobileMenuOpen(false);

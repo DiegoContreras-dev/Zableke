@@ -94,11 +94,28 @@ export class UsersService {
     return toView(updated);
   }
 
-  async deleteUser(targetId: string): Promise<boolean> {
+  async deleteUser(targetId: string, callerId: string): Promise<boolean> {
+    // SECURITY: Prevent self-deletion (admin lockout)
+    if (targetId === callerId) {
+      throw new AuthError("Cannot delete your own account", "INVALID_INPUT", 400);
+    }
+
     const user = await this.repo.findById(targetId);
     if (!user) {
       throw new AuthError("User not found", "USER_NOT_FOUND", 404);
     }
+
+    // SECURITY: Prevent deleting the last admin
+    const isTargetAdmin = user.roles.some((r) => r.role.name === "ADMIN");
+    if (isTargetAdmin) {
+      const adminCount = await prisma.userRole.count({
+        where: { role: { name: "ADMIN" } },
+      });
+      if (adminCount <= 1) {
+        throw new AuthError("Cannot delete the last admin account", "INVALID_INPUT", 400);
+      }
+    }
+
     await this.repo.deleteById(targetId);
     return true;
   }

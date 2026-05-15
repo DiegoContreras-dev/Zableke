@@ -1,4 +1,5 @@
 import { AuthError } from "@/backend/common/errors/auth.error";
+import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 import {
   parseCreateScheduleInput,
   parseUpdateScheduleInput,
@@ -49,8 +50,21 @@ export class SchedulesService {
     return schedules.map(toView);
   }
 
-  async createSchedule(rawInput: unknown, createdById: string): Promise<ScheduleView> {
+  async createSchedule(rawInput: unknown, caller: CurrentUserLike): Promise<ScheduleView> {
     const input: CreateScheduleInput = parseCreateScheduleInput(rawInput);
+    const isAdmin = caller.roles.includes("ADMIN");
+
+    // SECURITY: Non-admin users can only create schedules for themselves
+    if (!isAdmin) {
+      const callerTutorId = await this.repo.findTutorIdByUserId(caller.id);
+      if (!callerTutorId) {
+        throw new AuthError("You don't have a tutor profile", "FORBIDDEN", 403);
+      }
+      if (input.tutorId !== callerTutorId) {
+        throw new AuthError("You can only create schedules for yourself", "FORBIDDEN", 403);
+      }
+    }
+
     const startsAt = new Date(input.startsAt);
     const endsAt = new Date(input.endsAt);
 
@@ -80,7 +94,7 @@ export class SchedulesService {
     const schedule = await this.repo.create({
       tutorId: input.tutorId,
       roomId: input.roomId,
-      createdById,
+      createdById: caller.id,
       title: input.title,
       description: input.description,
       startsAt,
@@ -90,7 +104,7 @@ export class SchedulesService {
     return toView(schedule);
   }
 
-  async updateSchedule(rawInput: unknown): Promise<ScheduleView> {
+  async updateSchedule(rawInput: unknown, caller: CurrentUserLike): Promise<ScheduleView> {
     const input: UpdateScheduleInput = parseUpdateScheduleInput(rawInput);
 
     const existing = await this.repo.findById(input.id);
@@ -99,6 +113,15 @@ export class SchedulesService {
     }
     if (existing.status !== "ACTIVE") {
       throw new AuthError("Only ACTIVE schedules can be updated", "INVALID_STATE", 400);
+    }
+
+    // SECURITY: Non-admin users can only update their own schedules
+    const isAdmin = caller.roles.includes("ADMIN");
+    if (!isAdmin) {
+      const callerTutorId = await this.repo.findTutorIdByUserId(caller.id);
+      if (!callerTutorId || callerTutorId !== existing.tutorId) {
+        throw new AuthError("You can only update your own schedules", "FORBIDDEN", 403);
+      }
     }
 
     const startsAt = input.startsAt ? new Date(input.startsAt) : existing.startsAt;
@@ -142,7 +165,7 @@ export class SchedulesService {
     return toView(updated);
   }
 
-  async cancelSchedule(id: string): Promise<ScheduleView> {
+  async cancelSchedule(id: string, caller: CurrentUserLike): Promise<ScheduleView> {
     const existing = await this.repo.findById(id);
     if (!existing) {
       throw new AuthError("Schedule not found", "RESOURCE_NOT_FOUND", 404);
@@ -150,6 +173,16 @@ export class SchedulesService {
     if (existing.status === "CANCELLED") {
       throw new AuthError("Schedule is already cancelled", "INVALID_STATE", 400);
     }
+
+    // SECURITY: Non-admin users can only cancel their own schedules
+    const isAdmin = caller.roles.includes("ADMIN");
+    if (!isAdmin) {
+      const callerTutorId = await this.repo.findTutorIdByUserId(caller.id);
+      if (!callerTutorId || callerTutorId !== existing.tutorId) {
+        throw new AuthError("You can only cancel your own schedules", "FORBIDDEN", 403);
+      }
+    }
+
     const updated = await this.repo.cancel(id);
     return toView(updated);
   }

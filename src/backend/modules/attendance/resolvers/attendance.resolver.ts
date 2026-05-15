@@ -62,8 +62,8 @@ export const attendanceResolvers = {
       args: { scheduleId: string },
       context: GraphQLContext
     ) => {
-      requireUser(context.currentUser);
-      return attendanceService.getAttendancesBySchedule(args.scheduleId);
+      const user = requireUser(context.currentUser);
+      return attendanceService.getAttendancesBySchedule(args.scheduleId, user);
     },
 
     myAttendanceHistory: async (

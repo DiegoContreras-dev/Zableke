@@ -57,19 +57,22 @@ const graphqlHandler = startServerAndCreateNextHandler<NextRequest, GraphQLConte
 });
 
 const ALLOWED_ORIGINS = [
-  "http://localhost",
   "http://localhost:3000",
   "http://zableke.duckdns.org",
 ];
 
 function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
+  // SECURITY: Only reflect the origin if it's in the allowlist.
+  // Never fall back to a default origin — reject unknown origins.
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
   };
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
 }
 
 export async function OPTIONS(request: NextRequest) {

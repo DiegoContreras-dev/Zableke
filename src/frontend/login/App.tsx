@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -96,10 +96,10 @@ export default function App() {
     setIsLoading(true);
     setShowError(false);
     authenticateWithGoogle({ variables: { idToken: response.credential } })
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         const session = data?.authenticateWithGoogle;
         if (session?.user && session?.token) {
-          createTutorSession(session.token);
+          await createTutorSession(session.token);
           redirectByRoles(session.user.roles);
         }
       })
