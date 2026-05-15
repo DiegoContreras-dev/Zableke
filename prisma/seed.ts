@@ -1,11 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminPasswordHash = await bcrypt.hash("admin123", 10);
-
+  // ── Roles ────────────────────────────────────────────────────────────────
   const [adminRole, tutorRole] = await Promise.all([
     prisma.role.upsert({
       where: { name: "ADMIN" },
@@ -25,96 +23,74 @@ async function main() {
     }),
   ]);
 
-  const adminUser = await prisma.user.upsert({
-    where: { email: "admin@ce.ucn.cl" },
-    update: {
-      firstName: "Admin",
-      lastName: "UCN",
-      passwordHash: adminPasswordHash,
-      isActive: true,
-    },
-    create: {
-      email: "admin@ce.ucn.cl",
-      firstName: "Admin",
-      lastName: "UCN",
-      passwordHash: adminPasswordHash,
-      isActive: true,
-    },
+  // ── Diego Contreras — ADMIN (UCN) ─────────────────────────────────────────
+  const diegoUcnUser = await prisma.user.upsert({
+    where: { email: "diego.contreras03@alumnos.ucn.cl" },
+    update: { firstName: "Diego", lastName: "Contreras", isActive: true },
+    create: { email: "diego.contreras03@alumnos.ucn.cl", firstName: "Diego", lastName: "Contreras", isActive: true },
   });
-
   await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: adminUser.id,
-        roleId: adminRole.id,
-      },
-    },
+    where: { userId_roleId: { userId: diegoUcnUser.id, roleId: adminRole.id } },
     update: {},
-    create: {
-      userId: adminUser.id,
-      roleId: adminRole.id,
-    },
+    create: { userId: diegoUcnUser.id, roleId: adminRole.id },
   });
+  console.log("✓ diego.contreras03@alumnos.ucn.cl — ADMIN");
 
+  // ── Diego Contreras — TUTOR (Gmail) ──────────────────────────────────────
+  const diegoGmailUser = await prisma.user.upsert({
+    where: { email: "diegocontreraskwk14@gmail.com" },
+    update: { firstName: "Diego", lastName: "Contreras", isActive: true },
+    create: { email: "diegocontreraskwk14@gmail.com", firstName: "Diego", lastName: "Contreras", isActive: true },
+  });
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: diegoGmailUser.id, roleId: tutorRole.id } },
+    update: {},
+    create: { userId: diegoGmailUser.id, roleId: tutorRole.id },
+  });
+  await prisma.tutor.upsert({
+    where: { userId: diegoGmailUser.id },
+    update: {},
+    create: { userId: diegoGmailUser.id, department: "General" },
+  });
+  console.log("✓ diegocontreraskwk14@gmail.com — TUTOR");
+
+  // ── Tutor Demo ────────────────────────────────────────────────────────────
   const tutorDemoUser = await prisma.user.upsert({
     where: { email: "tutor@alumnos.ucn.cl" },
-    update: {
-      firstName: "Tutor",
-      lastName: "Demo",
-      isActive: true,
-    },
-    create: {
-      email: "tutor@alumnos.ucn.cl",
-      firstName: "Tutor",
-      lastName: "Demo",
-      isActive: true,
-    },
+    update: { firstName: "Tutor", lastName: "Demo", isActive: true },
+    create: { email: "tutor@alumnos.ucn.cl", firstName: "Tutor", lastName: "Demo", isActive: true },
   });
-
   await prisma.userRole.upsert({
     where: { userId_roleId: { userId: tutorDemoUser.id, roleId: tutorRole.id } },
     update: {},
     create: { userId: tutorDemoUser.id, roleId: tutorRole.id },
   });
-
   await prisma.tutor.upsert({
     where: { userId: tutorDemoUser.id },
     update: {},
     create: { userId: tutorDemoUser.id, department: "General" },
   });
+  console.log("✓ tutor@alumnos.ucn.cl — TUTOR");
 
-  const victorPasswordHash = await bcrypt.hash("victor123", 10);
+  // ── Víctor Jopia — TUTOR ─────────────────────────────────────────────────
   const victorUser = await prisma.user.upsert({
     where: { email: "victor.jopia01@alumnos.ucn.cl" },
-    update: {
-      firstName: "Víctor",
-      lastName: "Jopia",
-      passwordHash: victorPasswordHash,
-      isActive: true,
-    },
-    create: {
-      email: "victor.jopia01@alumnos.ucn.cl",
-      firstName: "Víctor",
-      lastName: "Jopia",
-      passwordHash: victorPasswordHash,
-      isActive: true,
-    },
+    update: { firstName: "Víctor", lastName: "Jopia", isActive: true },
+    create: { email: "victor.jopia01@alumnos.ucn.cl", firstName: "Víctor", lastName: "Jopia", isActive: true },
   });
-
   await prisma.userRole.upsert({
     where: { userId_roleId: { userId: victorUser.id, roleId: tutorRole.id } },
     update: {},
     create: { userId: victorUser.id, roleId: tutorRole.id },
   });
-
   await prisma.tutor.upsert({
     where: { userId: victorUser.id },
     update: {},
     create: { userId: victorUser.id, department: "General" },
   });
+  console.log("✓ victor.jopia01@alumnos.ucn.cl — TUTOR");
 
   // ── Oferta POO + slot con Víctor + estudiantes demo ──────────────────────
-
   const victorTutor = await prisma.tutor.findUnique({ where: { userId: victorUser.id } });
   if (!victorTutor) throw new Error("Tutor de Víctor no encontrado");
 
@@ -126,7 +102,7 @@ async function main() {
       name: "Programación Orientada a Objetos",
       semester: "2026-1",
       status: "OPEN",
-      createdById: adminUser.id,
+      createdById: diegoUcnUser.id,
     },
   });
 
@@ -173,31 +149,7 @@ async function main() {
     });
   }
 
-  console.log("Seed ejecutado correctamente: roles y usuarios base creados.");
-
-  // ── Diego Contreras: admin via Google OAuth ──────────────────────────────
-  const diegoUser = await prisma.user.upsert({
-    where: { email: "diego.contreras03@alumnos.ucn.cl" },
-    update: {
-      firstName: "Diego",
-      lastName: "Contreras",
-      isActive: true,
-    },
-    create: {
-      email: "diego.contreras03@alumnos.ucn.cl",
-      firstName: "Diego",
-      lastName: "Contreras",
-      isActive: true,
-    },
-  });
-
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: diegoUser.id, roleId: adminRole.id } },
-    update: {},
-    create: { userId: diegoUser.id, roleId: adminRole.id },
-  });
-
-  console.log("diego.contreras03@alumnos.ucn.cl registrado con rol ADMIN.");
+  console.log("\nSeed completado.");
 }
 
 main()
