@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import {
   BarChart3,
   CalendarDays,
@@ -11,10 +10,10 @@ import {
   Users,
   AlertTriangle,
   TrendingUp,
-  Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { gql } from "@apollo/client";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery } from "@apollo/client/react";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
 
@@ -31,12 +30,6 @@ const ADMIN_OVERVIEW = gql`
       status
       startsAt
     }
-  }
-`;
-
-const DELETE_USER = gql`
-  mutation DeleteUser($id: ID!) {
-    deleteUser(id: $id)
   }
 `;
 
@@ -63,15 +56,17 @@ function StatCard({
   description,
   icon: Icon,
   accent,
+  borderColor,
 }: {
   label: string;
   value: number | string;
   description?: string;
   icon: React.ElementType;
   accent: string;
+  borderColor: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm border-t-4 ${borderColor}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
@@ -102,12 +97,15 @@ function QuickActionCard({
   return (
     <Link
       href={href}
-      className="group flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-[#23415B]/30 hover:shadow-md"
+      className="group flex flex-col items-start rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-[#23415B]/30 hover:shadow-md hover:bg-slate-50"
     >
-      <div className={`rounded-lg p-2.5 ${accent} shrink-0`}>
-        <Icon className="h-5 w-5 text-white" />
+      <div className="flex w-full items-start justify-between">
+        <div className={`rounded-lg p-2.5 ${accent} shrink-0`}>
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <ArrowRight className="h-5 w-5 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-[#23415B]" />
       </div>
-      <div>
+      <div className="mt-3">
         <p className="text-sm font-semibold text-slate-900 group-hover:text-[#23415B]">{title}</p>
         <p className="mt-0.5 text-xs text-slate-500">{description}</p>
       </div>
@@ -131,35 +129,74 @@ export function AdminHomePage() {
     allSchedules: Schedule[];
   }>(ADMIN_OVERVIEW, { fetchPolicy: "cache-and-network" });
 
-  const [deleteUser, { loading: deleting }] = useMutation(DELETE_USER, {
-    refetchQueries: ["AdminOverview"],
-  });
-
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-
-  const handleDelete = async () => {
-    if (!confirmId) return;
-    await deleteUser({ variables: { id: confirmId } });
-    setConfirmId(null);
-  };
-
   const users = data?.usersAccess ?? [];
   const schedules = data?.allSchedules ?? [];
 
   const totalTutores = users.filter((u) => u.roles.includes("TUTOR")).length;
   const totalAdmins = users.filter((u) => u.roles.includes("ADMIN")).length;
   const totalActivos = users.filter((u) => u.isActive).length;
+  const totalSinAsignar = users.filter(
+    (u) => !u.roles.includes("ADMIN") && !u.roles.includes("TUTOR"),
+  ).length;
 
   const totalSesiones = schedules.length;
   const sesionesActivas = schedules.filter((s) => s.status === "ACTIVE").length;
+
+  const parseDate = (dStr: string) => {
+    const asNum = Number(dStr);
+    return new Date(isNaN(asNum) ? dStr : asNum);
+  };
+
   const sesionesHoy = schedules.filter((s) => {
-    const d = new Date(s.startsAt);
+    const d = parseDate(s.startsAt);
     return (
       d.getFullYear() === today.getFullYear() &&
       d.getMonth() === today.getMonth() &&
       d.getDate() === today.getDate()
     );
   }).length;
+
+  // Calcular sesiones de la semana actual dinámicamente
+  const startOfWeek = new Date(today);
+  const dayOfWeek = startOfWeek.getDay() === 0 ? 7 : startOfWeek.getDay();
+  startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek + 1);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const weekCounts = { Lun: 0, Mar: 0, Mié: 0, Jue: 0, Vie: 0, Sáb: 0 };
+  const getDayName = (d: Date) => ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][d.getDay()];
+
+  schedules.forEach((s) => {
+    const d = parseDate(s.startsAt);
+    if (d >= startOfWeek && d <= endOfWeek) {
+      const name = getDayName(d);
+      if (name in weekCounts) {
+        weekCounts[name as keyof typeof weekCounts]++;
+      }
+    }
+  });
+
+  const totalSesionesSemana = Object.values(weekCounts).reduce((sum, count) => sum + count, 0);
+
+  const roleSections = [
+    {
+      key: "ADMIN" as const,
+      label: "Administradores",
+      count: totalAdmins,
+      accent: "bg-emerald-500",
+      hoverStyle: "hover:bg-emerald-50/80 hover:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.35),0_0_28px_rgba(16,185,129,0.22)]",
+    },
+    {
+      key: "TUTOR" as const,
+      label: "Tutores",
+      count: totalTutores,
+      accent: "bg-blue-500",
+      hoverStyle: "hover:bg-blue-50/80 hover:shadow-[inset_0_0_0_1px_rgba(59,130,246,0.35),0_0_28px_rgba(59,130,246,0.22)]",
+    },
+  ];
 
   return (
     <>
@@ -192,13 +229,15 @@ export function AdminHomePage() {
           description="Con rol TUTOR asignado"
           icon={Users}
           accent="bg-[#23415B]"
+          borderColor="border-t-[#23415B]"
         />
         <StatCard
           label="Sesiones totales"
           value={loading ? "—" : totalSesiones}
-          description={`${sesionesActivas} activas`}
+          description={`${totalSesionesSemana} esta semana · ${sesionesActivas} activas`}
           icon={CalendarDays}
           accent="bg-emerald-600"
+          borderColor="border-t-emerald-600"
         />
         <StatCard
           label="Sesiones hoy"
@@ -206,6 +245,7 @@ export function AdminHomePage() {
           description="Programadas para hoy"
           icon={ClipboardList}
           accent="bg-sky-600"
+          borderColor="border-t-sky-600"
         />
         <StatCard
           label="Usuarios registrados"
@@ -213,6 +253,7 @@ export function AdminHomePage() {
           description={`${totalAdmins} administrador(es)`}
           icon={TrendingUp}
           accent="bg-amber-500"
+          borderColor="border-t-amber-500"
         />
       </div>
 
@@ -247,28 +288,33 @@ export function AdminHomePage() {
             href="/admin/auditoria"
             icon={ScrollText}
             title="Auditoría"
-            description="Registro de all acciones del sistema"
+            description="Registro de acciones del sistema"
             accent="bg-slate-500"
           />
         </div>
       </div>
 
-      {/* Users table preview */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-slate-900">Usuarios del sistema</h2>
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Usuarios del sistema</h2>
+            <p className="text-xs text-slate-500">
+              {totalAdmins} administradores · {totalTutores} tutores · {totalSinAsignar} sin asignar
+            </p>
+          </div>
           <Link
             href="/admin/tutores"
-            className="text-xs font-medium text-[#23415B] hover:underline"
+            className="group inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-all hover:bg-slate-100 hover:text-slate-900"
           >
-            Ver todos →
+            Ver registro completo
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
 
         {loading ? (
           <div className="space-y-3 p-5">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
             ))}
           </div>
         ) : users.length === 0 ? (
@@ -280,105 +326,34 @@ export function AdminHomePage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Correo
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Roles
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Estado
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {users.slice(0, 8).map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-slate-900">{user.email}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {user.roles.map((r) => (
-                          <span
-                            key={r}
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              r === "ADMIN"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-[#23415B]/10 text-[#23415B]"
-                            }`}
-                          >
-                            {r}
-                          </span>
-                        ))}
-                        {user.roles.length === 0 && (
-                          <span className="text-xs text-slate-400">Sin rol</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          user.isActive
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {user.isActive ? "Activo" : "Inactivo"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <button
-                        onClick={() => setConfirmId(user.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div>
+            <div className="grid grid-cols-1 divide-y-2 divide-slate-300/90 sm:grid-cols-2 sm:divide-x-2 sm:divide-y-0">
+              {roleSections.map((section) => (
+                <Link
+                  key={section.key}
+                  href="/admin/tutores"
+                  className={`group flex min-h-36 w-full flex-col items-center justify-center gap-3 px-5 py-6 text-center transition-all duration-200 ${section.hoverStyle}`}
+                >
+                  <span className={`h-3 w-3 rounded-full ${section.accent}`} />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      {section.label}
+                    </p>
+                    <p className="mt-2 text-4xl font-bold leading-none text-slate-900">
+                      {section.count}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
+                    Ver registro
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>
     </div>
-
-    {/* Modal confirmación de eliminación */}
-    {confirmId && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="mx-4 w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-          <div className="mb-1 flex items-center gap-2 text-red-600">
-            <AlertTriangle className="h-5 w-5" />
-            <h3 className="text-sm font-semibold">Eliminar usuario</h3>
-          </div>
-          <p className="mt-2 text-sm text-slate-600">
-            ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
-          </p>
-          <div className="mt-5 flex justify-end gap-2">
-            <button
-              onClick={() => setConfirmId(null)}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-            >
-              {deleting ? "Eliminando…" : "Eliminar"}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
     </>
   );
 }

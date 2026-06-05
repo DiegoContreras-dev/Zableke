@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
+import { jwtDecode } from 'jwt-decode';
 import { Alert } from './components/Alert';
 import { Button } from './components/Button';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
-import { createTutorSession, hasTutorSession } from '@/frontend/modules/auth/services/session';
+import { createTutorSession, getSessionToken, hasTutorSession } from '@/frontend/modules/auth/services/session';
 
 // Tipos para Google Identity Services
 declare global {
@@ -44,9 +45,29 @@ interface AuthSessionGoogleResult {
   };
 }
 
+interface AuthSessionEmailResult {
+  authenticateWithEmail: {
+    user: { id: string; email: string; firstName: string; lastName: string; roles: string[] };
+    token: string;
+    issuedAt: string;
+    expiresAt: string;
+  };
+}
+
 const AUTHENTICATE_WITH_GOOGLE = gql`
   mutation AuthenticateWithGoogle($idToken: String!) {
     authenticateWithGoogle(idToken: $idToken) {
+      user { id email firstName lastName roles }
+      token
+      issuedAt
+      expiresAt
+    }
+  }
+`;
+
+const AUTHENTICATE_WITH_EMAIL = gql`
+  mutation AuthenticateWithEmail($input: LoginWithEmailInput!) {
+    authenticateWithEmail(input: $input) {
       user { id email firstName lastName roles }
       token
       issuedAt
@@ -62,6 +83,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('Solo se permiten correos institucionales UCN.');
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
+  const [devEmail, setDevEmail] = useState('diego.contreras03@alumnos.ucn.cl');
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const googleCallbackRef = useRef<((r: { credential: string }) => void) | null>(null);
 
@@ -74,10 +96,21 @@ export default function App() {
   };
 
   const [authenticateWithGoogle] = useMutation<AuthSessionGoogleResult>(AUTHENTICATE_WITH_GOOGLE);
+  const [authenticateWithEmail] = useMutation<AuthSessionEmailResult>(AUTHENTICATE_WITH_EMAIL);
 
   useEffect(() => {
     if (hasTutorSession()) {
-      router.replace('/tutor');
+      const token = getSessionToken();
+      if (token) {
+        try {
+          const decoded = jwtDecode<{ roles: string[] }>(token);
+          redirectByRoles(decoded.roles);
+        } catch (e) {
+          router.replace('/tutor');
+        }
+      } else {
+        router.replace('/tutor');
+      }
     }
   }, [router]);
 
@@ -111,6 +144,28 @@ export default function App() {
       .finally(() => setIsLoading(false));
   };
   googleCallbackRef.current = handleGoogleCredentialResponse;
+
+  const handleDevLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!devEmail) return;
+    setIsLoading(true);
+    setShowError(false);
+    
+    authenticateWithEmail({ variables: { input: { email: devEmail } } })
+      .then(({ data }) => {
+        const session = data?.authenticateWithEmail;
+        if (session?.user && session?.token) {
+          createTutorSession(session.token);
+          redirectByRoles(session.user.roles);
+        }
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Error de login directo.';
+        setErrorMessage(message.replace(/^GraphQL error:\s*/i, ''));
+        setShowError(true);
+      })
+      .finally(() => setIsLoading(false));
+  };
 
   // Cargar script de Google Identity Services y renderizar el botón
   useEffect(() => {
@@ -241,6 +296,23 @@ export default function App() {
                 <span>Acceder con Google institucional</span>
               </Button>
             )}
+          </div>
+
+          <div className="mt-8 border-t border-gray-200 pt-6">
+            <p className="text-sm font-semibold text-gray-500 mb-4 text-center">Acceso Directo Temporal (Desarrollo/Emergencia)</p>
+            <form onSubmit={handleDevLogin} className="flex flex-col gap-3">
+              <input
+                type="email"
+                value={devEmail}
+                onChange={(e) => setDevEmail(e.target.value)}
+                placeholder="correo@alumnos.ucn.cl"
+                className="px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#23415B]"
+                required
+              />
+              <Button type="submit" variant="primary" disabled={isLoading}>
+                Entrar sin Google
+              </Button>
+            </form>
           </div>
 
           {/* Support Message */}
