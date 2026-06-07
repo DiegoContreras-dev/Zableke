@@ -12,6 +12,40 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
 
+  minio:
+    image: minio/minio:latest
+    container_name: zableke-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_dev}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: zableke-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./config/forms:/forms:ro
+      - ./db/scripts/init-minio.sh:/init-minio.sh:ro
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_dev}
+    restart: "no"
+
   app:
     build:
       context: .
@@ -20,6 +54,8 @@ services:
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     environment:
       NODE_ENV: production
@@ -30,6 +66,12 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_SERVICE_ACCOUNT_EMAIL: ${GOOGLE_SERVICE_ACCOUNT_EMAIL}
       GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_dev}
+      MINIO_USE_SSL: "false"
+      MINIO_BUCKET: ${MINIO_BUCKET:-config}
     init: true
     ports:
       - "3000:3000"
@@ -67,6 +109,7 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:
 
 networks:
   default:

@@ -1,0 +1,12 @@
+{
+  "rows": [
+    [
+      { "key": "firstName", "label": "Nombre", "type": "text", "placeholder": "Ej. Víctor", "autoFocus": true },
+      { "key": "lastName",  "label": "Apellido", "type": "text", "placeholder": "Ej. López" }
+    ],
+    [{ "key": "rut",   "label": "RUT",                    "type": "text",   "placeholder": "Ej. 12.345.678-9" }],
+    [{ "key": "email", "label": "Correo institucional",   "type": "email",  "placeholder": "Ej. nombre.apellido@alumnos.ucn.cl" }],
+    [{ "key": "career","label": "Carrera",                "type": "career" }],
+    [{ "key": "entryYear", "label": "Año de ingreso",     "type": "number", "min": 1990, "max": 2026 }]
+  ]
+}
