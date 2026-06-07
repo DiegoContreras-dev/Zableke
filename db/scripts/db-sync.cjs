@@ -38,6 +38,9 @@ const STATEMENTS = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "firstName"    TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lastName"     TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "passwordHash" TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "rut"          TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "career"       TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "entryYear"    INTEGER`,
 
   // roles
   `CREATE TABLE IF NOT EXISTS "roles" (
