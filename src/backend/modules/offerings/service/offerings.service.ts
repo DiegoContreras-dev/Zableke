@@ -433,6 +433,26 @@ export class OfferingsService {
     });
   }
 
+  async getReportStats(semester?: string) {
+    const target = semester ?? getCurrentSemester();
+    const { offerings, careerGroups } = await this.repo.findReportStats(target);
+    return {
+      activeOfferingsCount: offerings.filter((o) => o.status === "OPEN").length,
+      closedOfferingsCount: offerings.filter((o) => o.status === "CLOSED").length,
+      totalSlots: offerings.reduce((s, o) => s + o._count.slots, 0),
+      totalStudents: offerings.reduce((s, o) => s + o._count.enrollments, 0),
+      careerBreakdown: careerGroups.map((g) => ({
+        career: g.studentCareer ?? "Sin carrera",
+        count: g._count.id,
+      })),
+    };
+  }
+
+  async getAllEnrollments(semester?: string) {
+    const rows = await this.repo.findAllEnrollments(semester ?? getCurrentSemester());
+    return rows.map((e) => ({ ...e, enrolledAt: e.enrolledAt.toISOString() }));
+  }
+
   async prepareEnrollment(input: CreateEnrollmentInput) {
     const slot = await this.repo.findSlotById(input.slotId);
     if (!slot) throw new AuthError("Slot not found", "RESOURCE_NOT_FOUND", 404);

@@ -287,7 +287,7 @@ export function AdminHomePage() {
           <QuickActionCard
             href="/admin/auditoria"
             icon={ScrollText}
-            title="Auditoría"
+            title="Monitoreo"
             description="Registro de acciones del sistema"
             accent="bg-slate-500"
           />

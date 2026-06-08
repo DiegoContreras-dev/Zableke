@@ -23,6 +23,7 @@
     "@as-integrations/next": "^4.1.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
+    "exceljs": "^4.4.0",
     "graphql": "^16.13.2",
     "jose": "^6.2.2",
     "jwt-decode": "^4.0.0",

@@ -794,7 +794,7 @@ export function AdminAuditoriaPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 lg:text-3xl">
-              Auditoría de Tutorías
+              Monitoreo de Tutorías
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               Accede a la vista de cada tutor, consulta sus horarios y registra asistencia.
