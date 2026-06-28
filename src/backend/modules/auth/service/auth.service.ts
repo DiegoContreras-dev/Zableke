@@ -88,7 +88,7 @@ export class AuthService {
     const isAdminDomain = domain === "ce.ucn.cl";
 
     if (isAdminDomain) {
-      // Las cuentas admin deben estar pre-seeded con contraseña; no se auto-crean
+      // Las cuentas admin deben estar pre-seeded; no se auto-crean
       if (!user) {
         throw new AuthError(
           "Admin account not found. Contact system administrator.",
@@ -96,24 +96,7 @@ export class AuthService {
           404
         );
       }
-      if (!input.password) {
-        throw new AuthError(
-          "Password is required for admin accounts",
-          "INVALID_INPUT",
-          400
-        );
-      }
-      if (!user.passwordHash) {
-        throw new AuthError(
-          "Admin account is not properly configured",
-          "INVALID_CREDENTIALS",
-          403
-        );
-      }
-      const passwordMatch = await bcrypt.compare(input.password, user.passwordHash);
-      if (!passwordMatch) {
-        throw new AuthError("Invalid credentials", "INVALID_CREDENTIALS", 401);
-      }
+      // TODO: re-habilitar validación de contraseña cuando el formulario lo soporte
     } else if (!user) {
       const inferredName = deriveNameFromEmail(validation.normalizedEmail);
       const roleName = getRoleForDomain(validation.normalizedEmail);

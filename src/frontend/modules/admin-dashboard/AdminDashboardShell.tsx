@@ -32,7 +32,7 @@ const mainNavItems: ReadonlyArray<{
   { href: "/admin/tutorias", label: "Tutorías", icon: ClipboardList },
   { href: "/admin/sesiones", label: "Sesiones", icon: CalendarDays },
   { href: "/admin/reportes", label: "Reportes", icon: BarChart3 },
-  { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
+  { href: "/admin/auditoria", label: "Monitoreo", icon: ScrollText },
 ];
 
 type AdminDashboardShellProps = {

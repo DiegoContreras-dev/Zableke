@@ -91,6 +91,19 @@ export const offeringsTypeDefs = `
     grade: Float!
   }
 
+  type CareerCount {
+    career: String!
+    count: Int!
+  }
+
+  type ReportStats {
+    activeOfferingsCount: Int!
+    closedOfferingsCount: Int!
+    totalSlots: Int!
+    totalStudents: Int!
+    careerBreakdown: [CareerCount!]!
+  }
+
   input CreateOfferingInput {
     name: String!
     semester: String
@@ -132,6 +145,8 @@ export const offeringsTypeDefs = `
     attendanceForSlot(slotId: ID!, date: String!): SlotAttendanceView!
     tutorOptions: [TutorOption!]!
     tutorStats: [TutorPerformanceStat!]!
+    reportStats(semester: String): ReportStats!
+    allEnrollments(semester: String): [EnrollmentRecord!]!
   }
 
   extend type Mutation {
@@ -143,7 +158,7 @@ export const offeringsTypeDefs = `
     removeSlot(slotId: ID!): Boolean!
     createEnrollment(input: CreateEnrollmentInput!): EnrollmentRecord!
     removeEnrollment(enrollmentId: ID!): Boolean!
-    generateGoogleForm(semester: String, existingFormId: String!): GoogleFormResult!
+    generateGoogleForm(semester: String, existingFormId: String): GoogleFormResult!
     syncFormResponses(semester: String): SyncResult!
   }
 `;
@@ -192,6 +207,16 @@ export const offeringsResolvers = {
     tutorStats: async (_: unknown, __: unknown, context: GraphQLContext) => {
       requirePermission(context.currentUser, "MANAGE_TUTORS");
       return offeringsService.getTutorStats();
+    },
+
+    reportStats: async (_: unknown, args: { semester?: string }, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.getReportStats(args.semester);
+    },
+
+    allEnrollments: async (_: unknown, args: { semester?: string }, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.getAllEnrollments(args.semester);
     },
   },
 
@@ -254,7 +279,7 @@ export const offeringsResolvers = {
 
     generateGoogleForm: async (
       _: unknown,
-      args: { semester?: string; existingFormId: string },
+      args: { semester?: string; existingFormId?: string },
       context: GraphQLContext
     ) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");

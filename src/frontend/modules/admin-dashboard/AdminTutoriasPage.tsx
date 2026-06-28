@@ -49,7 +49,7 @@ const ADD_SLOT = gql`
 `;
 
 const GENERATE_FORM = gql`
-  mutation GenerateGlobalForm($semester: String, $existingFormId: String!) {
+  mutation GenerateGlobalForm($semester: String, $existingFormId: String) {
     generateGoogleForm(semester: $semester, existingFormId: $existingFormId) {
       formUrl
       formEditUrl
@@ -134,6 +134,7 @@ export function AdminTutoriasPage() {
   const [targetCareers, setTargetCareers] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
+  const [generatedForm, setGeneratedForm] = useState<{ formUrl: string; formEditUrl: string } | null>(null);
 
   const { data, loading, error } = useQuery<{
     offerings: OfferingRow[];
@@ -224,22 +225,16 @@ export function AdminTutoriasPage() {
   };
 
   const handleGenerateForm = async () => {
-    const existingFormId = window.prompt("Ingresa el ID del formulario vacío que creaste en Google Forms (puedes pegar la URL entera o solo el ID):");
-    if (!existingFormId) return;
-
-    // extract ID if they pasted a URL
-    let extractedId = existingFormId.trim();
-    if (extractedId.includes("/d/")) {
-      const match = extractedId.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (match) extractedId = match[1];
-    }
-
     setErrorMessage(null);
     setFormMessage(null);
     try {
-      const result = await generateForm({ variables: { semester, existingFormId: extractedId } });
-      const formUrl = (result.data as { generateGoogleForm?: { formUrl?: string } } | undefined)?.generateGoogleForm?.formUrl;
-      setFormMessage(formUrl ?? "Formulario global generado exitosamente.");
+      const result = await generateForm({ variables: { semester } });
+      const urls = (result.data as { generateGoogleForm?: { formUrl?: string; formEditUrl?: string } } | undefined)?.generateGoogleForm;
+      if (urls?.formUrl && urls?.formEditUrl) {
+        setGeneratedForm({ formUrl: urls.formUrl, formEditUrl: urls.formEditUrl });
+      } else {
+        setFormMessage("Formulario global generado exitosamente.");
+      }
     } catch (err: unknown) {
       const gqlMsg = (err as { graphQLErrors?: { message: string }[] })?.graphQLErrors?.[0]?.message ?? (err instanceof Error ? err.message : null);
       setErrorMessage(`Error al generar formulario: ${gqlMsg ?? "Desconocido"}`);
@@ -261,6 +256,51 @@ export function AdminTutoriasPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      {generatedForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="rounded-full bg-emerald-100 p-2.5">
+                <ExternalLink className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h2 className="text-base font-semibold text-slate-900">Formulario generado</h2>
+              <button onClick={() => setGeneratedForm(null)} className="ml-auto rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <ClipboardList className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-5">
+              El formulario de inscripción para el semestre <strong>{semester}</strong> fue creado y configurado correctamente.
+            </p>
+            <div className="flex flex-col gap-2">
+              <a
+                href={generatedForm.formEditUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-lg bg-[#23415B] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1a3048]"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Editar formulario
+              </a>
+              <a
+                href={generatedForm.formUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ver formulario (vista estudiante)
+              </a>
+              <button
+                onClick={() => setGeneratedForm(null)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500">Semestre {semester}</p>

@@ -315,14 +315,18 @@ export class OfferingsService {
     if (openOfferings.length === 0) {
       throw new AuthError("There are no open offerings with slots for this semester", "INVALID_STATE", 400);
     }
-    if (!existingFormId) {
-      throw new AuthError("Se requiere el ID de un formulario existente vacío", "INVALID_INPUT", 400);
-    }
 
     const client = new ServiceAccountFormsClient();
-    
-    // Remember initial items (like the default question) so we can delete them at the end
-    const initialForm = await client.getForm(existingFormId);
+
+    // If no existing form was provided, create a new one automatically
+    let resolvedFormId = existingFormId?.trim();
+    if (!resolvedFormId) {
+      const created = await client.createForm(`Tutoría ${targetSemester}`);
+      resolvedFormId = created.formId;
+    }
+
+    // Remember initial items so we can clean them up after inserting ours
+    const initialForm = await client.getForm(resolvedFormId);
     const initialItems = Array.isArray(initialForm.items)
       ? (initialForm.items as Array<{ itemId?: string }>)
       : [];
@@ -342,7 +346,7 @@ export class OfferingsService {
     }
 
     const phase1Requests = buildPhase1Requests(careerGroups, allCareers);
-    const phase1Result = await client.batchUpdateForm(existingFormId, phase1Requests);
+    const phase1Result = await client.batchUpdateForm(resolvedFormId, phase1Requests);
 
     // phase1Result.replies layout:
     // [0] updateFormInfo
@@ -378,42 +382,39 @@ export class OfferingsService {
     }
 
     const phase2 = buildPhase2Requests(careerGroups, careerSectionIds, carreraQuestionId ?? "", carreraItemId, allCareers);
-    await client.batchUpdateForm(existingFormId, phase2.requests);
+    await client.batchUpdateForm(resolvedFormId, phase2.requests);
 
     // ── Phase 3: Cleanup original items ──
     // Google Forms requires at least one item, so we couldn't delete the default question initially.
     // Now that our items are inserted, we safely find the original items and delete them by index.
-    const finalForm = await client.getForm(existingFormId);
-    const currentItems = Array.isArray(finalForm.items)
-      ? (finalForm.items as Array<{ itemId?: string }>)
-      : [];
-    const deleteRequests: unknown[] = [];
-    
-    // Delete from bottom to top so indices don't shift during deletion
-    for (let i = currentItems.length - 1; i >= 0; i--) {
-      const itemId = currentItems[i].itemId;
-      if (itemId && initialItemIds.includes(itemId)) {
-        deleteRequests.push({
-          deleteItem: {
-            location: { index: i }
-          }
-        });
+    if (initialItemIds.length > 0) {
+      const finalForm = await client.getForm(resolvedFormId);
+      const currentItems = Array.isArray(finalForm.items)
+        ? (finalForm.items as Array<{ itemId?: string }>)
+        : [];
+      const deleteRequests: unknown[] = [];
+
+      // Delete from bottom to top so indices don't shift during deletion
+      for (let i = currentItems.length - 1; i >= 0; i--) {
+        const itemId = currentItems[i].itemId;
+        if (itemId && initialItemIds.includes(itemId)) {
+          deleteRequests.push({ deleteItem: { location: { index: i } } });
+        }
+      }
+      if (deleteRequests.length > 0) {
+        await client.batchUpdateForm(resolvedFormId, deleteRequests);
       }
     }
-    
-    if (deleteRequests.length > 0) {
-      await client.batchUpdateForm(existingFormId, deleteRequests);
-    }
 
-    const formUrl = `https://docs.google.com/forms/d/${existingFormId}/viewform`;
-    const formEditUrl = `https://docs.google.com/forms/d/${existingFormId}/edit`;
+    const formUrl = `https://docs.google.com/forms/d/${resolvedFormId}/viewform`;
+    const formEditUrl = `https://docs.google.com/forms/d/${resolvedFormId}/edit`;
 
     await Promise.all(
       phase2.slotLabels.map((item) => this.repo.updateSlotGoogleLabel(item.slotId, item.label))
     );
     const link = await this.repo.upsertGoogleFormLink({
       semester: targetSemester,
-      formId: existingFormId,
+      formId: resolvedFormId,
       formUrl: formUrl,
       formEditUrl: formEditUrl,
     });
@@ -430,6 +431,26 @@ export class OfferingsService {
       client: new ServiceAccountFormsClient(),
       repo: this.repo,
     });
+  }
+
+  async getReportStats(semester?: string) {
+    const target = semester ?? getCurrentSemester();
+    const { offerings, careerGroups } = await this.repo.findReportStats(target);
+    return {
+      activeOfferingsCount: offerings.filter((o) => o.status === "OPEN").length,
+      closedOfferingsCount: offerings.filter((o) => o.status === "CLOSED").length,
+      totalSlots: offerings.reduce((s, o) => s + o._count.slots, 0),
+      totalStudents: offerings.reduce((s, o) => s + o._count.enrollments, 0),
+      careerBreakdown: careerGroups.map((g) => ({
+        career: g.studentCareer ?? "Sin carrera",
+        count: g._count.id,
+      })),
+    };
+  }
+
+  async getAllEnrollments(semester?: string) {
+    const rows = await this.repo.findAllEnrollments(semester ?? getCurrentSemester());
+    return rows.map((e) => ({ ...e, enrolledAt: e.enrolledAt.toISOString() }));
   }
 
   async prepareEnrollment(input: CreateEnrollmentInput) {

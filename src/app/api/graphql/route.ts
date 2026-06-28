@@ -59,7 +59,8 @@ const graphqlHandler = startServerAndCreateNextHandler<NextRequest, GraphQLConte
 const ALLOWED_ORIGINS = [
   "http://localhost",
   "http://localhost:3000",
-  "http://172.16.13.103.nip.io"
+  "http://172.16.13.103.nip.io",
+  "https://172.16.13.103.nip.io",
 ];
 
 function corsHeaders(origin: string | null): Record<string, string> {

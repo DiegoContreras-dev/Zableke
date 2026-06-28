@@ -317,6 +317,41 @@ export class OfferingsRepository {
     });
   }
 
+  async findReportStats(semester: string) {
+    const [offerings, careerGroups] = await Promise.all([
+      this.db.tutoringOffering.findMany({
+        where: { semester },
+        include: { _count: { select: { slots: true, enrollments: true } } },
+      }),
+      this.db.enrollment.groupBy({
+        by: ["studentCareer"],
+        where: { offering: { semester }, studentCareer: { not: null } },
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+      }),
+    ]);
+    return { offerings, careerGroups };
+  }
+
+  async findAllEnrollments(semester: string) {
+    return this.db.enrollment.findMany({
+      where: { offering: { semester } },
+      include: {
+        offering: { select: { name: true, semester: true } },
+        slot: {
+          select: {
+            dayOfWeek: true,
+            startTime: true,
+            endTime: true,
+            roomName: true,
+            tutor: { include: { user: { select: { firstName: true, lastName: true } } } },
+          },
+        },
+      },
+      orderBy: [{ offering: { name: "asc" } }, { studentName: "asc" }],
+    });
+  }
+
   private offeringInclude() {
     return {
       slots: {

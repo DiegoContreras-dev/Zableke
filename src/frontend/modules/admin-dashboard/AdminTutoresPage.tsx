@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useFormConfig, type FieldDef } from "@/frontend/hooks/useFormConfig";
 import {
   AlertTriangle,
   BookOpen,
@@ -200,8 +201,8 @@ function StatCard({ label, value, description, icon: Icon, accent }: {
 
 function RoleBadge({ role }: { role: string }) {
   const map: Record<string, string> = {
-    ADMIN: "bg-amber-100 text-amber-700 border-amber-200",
-    TUTOR: "bg-[#23415B]/10 text-[#23415B] border-[#23415B]/20",
+    ADMIN: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    TUTOR: "bg-blue-100 text-blue-700 border-blue-200",
   };
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${map[role] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}>
@@ -242,7 +243,7 @@ function AddTutorModal({ onCreate, onClose, creating, careers }: {
   creating: boolean;
   careers: CareerOption[];
 }) {
-  const currentYear = new Date().getFullYear();
+  const { config, loading: configLoading } = useFormConfig("tutor");
   const careerGroups = useMemo(() => groupCareersBySchool(careers), [careers]);
   const [form, setForm] = useState({
     firstName: "",
@@ -250,7 +251,7 @@ function AddTutorModal({ onCreate, onClose, creating, careers }: {
     rut: "",
     email: "",
     career: "",
-    entryYear: String(currentYear),
+    entryYear: String(new Date().getFullYear()),
   });
   const [careerOpen, setCareerOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -270,6 +271,7 @@ function AddTutorModal({ onCreate, onClose, creating, careers }: {
     if (careers.length === 0) e.career = "No hay carreras registradas";
     else if (!form.career.trim()) e.career = "Requerido";
     const year = parseInt(form.entryYear, 10);
+    const currentYear = new Date().getFullYear();
     if (isNaN(year) || year < 1990 || year > currentYear) e.entryYear = `Debe ser entre 1990 y ${currentYear}`;
 
     setErrors(e);
@@ -300,76 +302,65 @@ function AddTutorModal({ onCreate, onClose, creating, careers }: {
 
         {/* Form */}
         <div className="max-h-[70vh] overflow-y-auto px-5 py-5 space-y-4">
-          {/* Nombre + Apellido */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">Nombre <span className="text-rose-500">*</span></label>
-              <input autoFocus type="text" placeholder="Ej. Víctor" value={form.firstName} onChange={(e) => set("firstName", e.target.value)}
-                className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.firstName ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
-              {errors.firstName && <p className="mt-0.5 text-xs text-rose-500">{errors.firstName}</p>}
+          {configLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">Apellido <span className="text-rose-500">*</span></label>
-              <input type="text" placeholder="Ej. López" value={form.lastName} onChange={(e) => set("lastName", e.target.value)}
-                className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.lastName ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
-              {errors.lastName && <p className="mt-0.5 text-xs text-rose-500">{errors.lastName}</p>}
-            </div>
-          </div>
-
-          {/* RUT */}
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">RUT <span className="text-rose-500">*</span></label>
-            <input type="text" placeholder="Ej. 12.345.678-9" value={form.rut} onChange={(e) => set("rut", e.target.value)}
-              className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.rut ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
-            {errors.rut && <p className="mt-0.5 text-xs text-rose-500">{errors.rut}</p>}
-          </div>
-
-          {/* Correo */}
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Correo institucional <span className="text-rose-500">*</span></label>
-            <input type="email" placeholder="Ej. nombre.apellido@alumnos.ucn.cl" value={form.email} onChange={(e) => set("email", e.target.value)}
-              className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.email ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
-            {errors.email && <p className="mt-0.5 text-xs text-rose-500">{errors.email}</p>}
-          </div>
-
-          {/* Carrera */}
-          <div className="relative">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Carrera <span className="text-rose-500">*</span></label>
-            <button type="button" onClick={() => setCareerOpen((v) => !v)}
-              className={`flex w-full items-center justify-between rounded-lg border py-2.5 px-3 text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.career ? "border-rose-400 text-slate-400" : form.career ? "border-slate-200 text-slate-800 focus:border-[#23415B]" : "border-slate-200 text-slate-400 focus:border-[#23415B]"}`}>
-              <span className={form.career ? "text-slate-800 font-medium" : ""}>{form.career || "Seleccionar carrera…"}</span>
-              <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${careerOpen ? "rotate-180" : ""}`} />
-            </button>
-            {errors.career && <p className="mt-0.5 text-xs text-rose-500">{errors.career}</p>}
-            {careerOpen && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl">
-                {careerGroups.length === 0 ? (
-                  <p className="px-3 py-3 text-sm text-slate-500">No hay carreras registradas.</p>
-                ) : careerGroups.map((group) => (
-                  <div key={group.schoolName}>
-                    <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      {group.schoolName}
-                    </div>
-                    {group.careers.map((career) => (
-                      <button key={career.id} type="button"
-                        onClick={() => { set("career", career.name); setCareerOpen(false); }}
-                        className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-[#23415B]/5 ${form.career === career.name ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
-                        <span className="h-2 w-2 rounded-full bg-[#23415B] shrink-0" />{career.name}
+          ) : (config?.rows ?? []).map((row, rowIdx) => (
+            <div key={rowIdx} className={row.length > 1 ? "grid grid-cols-2 gap-3" : ""}>
+              {row.map((def: FieldDef) => {
+                if (def.type === "career") {
+                  return (
+                    <div key={def.key} className="relative">
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">{def.label} <span className="text-rose-500">*</span></label>
+                      <button type="button" onClick={() => setCareerOpen((v) => !v)}
+                        className={`flex w-full items-center justify-between rounded-lg border py-2.5 px-3 text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.career ? "border-rose-400 text-slate-400" : form.career ? "border-slate-200 text-slate-800 focus:border-[#23415B]" : "border-slate-200 text-slate-400 focus:border-[#23415B]"}`}>
+                        <span className={form.career ? "text-slate-800 font-medium" : ""}>{form.career || "Seleccionar carrera…"}</span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${careerOpen ? "rotate-180" : ""}`} />
                       </button>
-                    ))}
+                      {errors.career && <p className="mt-0.5 text-xs text-rose-500">{errors.career}</p>}
+                      {careerOpen && (
+                        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl">
+                          {careerGroups.length === 0 ? (
+                            <p className="px-3 py-3 text-sm text-slate-500">No hay carreras registradas.</p>
+                          ) : careerGroups.map((group) => (
+                            <div key={group.schoolName}>
+                              <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                {group.schoolName}
+                              </div>
+                              {group.careers.map((career) => (
+                                <button key={career.id} type="button"
+                                  onClick={() => { set("career", career.name); setCareerOpen(false); }}
+                                  className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-[#23415B]/5 ${form.career === career.name ? "bg-[#23415B]/10 text-[#23415B] font-semibold" : "text-slate-700"}`}>
+                                  <span className="h-2 w-2 rounded-full bg-[#23415B] shrink-0" />{career.name}
+                                </button>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <div key={def.key}>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">{def.label} <span className="text-rose-500">*</span></label>
+                    <input
+                      autoFocus={def.autoFocus}
+                      type={def.type}
+                      placeholder={def.placeholder}
+                      value={form[def.key as keyof typeof form] ?? ""}
+                      min={def.min}
+                      max={def.max}
+                      onChange={(e) => set(def.key, e.target.value)}
+                      className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors[def.key] ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`}
+                    />
+                    {errors[def.key] && <p className="mt-0.5 text-xs text-rose-500">{errors[def.key]}</p>}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Año de ingreso */}
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">Año de ingreso <span className="text-rose-500">*</span></label>
-            <input type="number" min={1990} max={currentYear} placeholder={String(currentYear)} value={form.entryYear} onChange={(e) => set("entryYear", e.target.value)}
-              className={`w-full rounded-lg border py-2 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#23415B]/20 ${errors.entryYear ? "border-rose-400" : "border-slate-200 focus:border-[#23415B]"}`} />
-            {errors.entryYear && <p className="mt-0.5 text-xs text-rose-500">{errors.entryYear}</p>}
-          </div>
+                );
+              })}
+            </div>
+          ))}
 
           {/* Nota contraseña */}
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">

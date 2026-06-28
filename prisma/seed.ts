@@ -96,12 +96,25 @@ async function main() {
 
   const pooOffering = await prisma.tutoringOffering.upsert({
     where: { id: "seed-poo-offering" },
-    update: { name: "Programación Orientada a Objetos", status: "OPEN" },
+    update: {
+      name: "Programación Orientada a Objetos",
+      status: "OPEN",
+      targetCareers: [
+        "Ingeniería Civil en Computación e Informática",
+        "Ingeniería en Tecnologías de Información",
+        "Ingeniería Civil Industrial",
+      ],
+    },
     create: {
       id: "seed-poo-offering",
       name: "Programación Orientada a Objetos",
       semester: "2026-1",
       status: "OPEN",
+      targetCareers: [
+        "Ingeniería Civil en Computación e Informática",
+        "Ingeniería en Tecnologías de Información",
+        "Ingeniería Civil Industrial",
+      ],
       createdById: diegoUcnUser.id,
     },
   });
