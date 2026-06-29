@@ -22,6 +22,7 @@ export const rolesTypeDefs = `
     lastName: String!
     phone: String
     career: String
+    avatarUrl: String
     isActive: Boolean!
     roles: [String!]!
     permissions: [String!]!

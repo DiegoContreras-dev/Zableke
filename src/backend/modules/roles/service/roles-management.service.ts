@@ -17,6 +17,7 @@ export interface UserAccessView {
   lastName: string;
   phone?: string | null;
   career?: string | null;
+  avatarUrl?: string | null;
   isActive: boolean;
   roles: string[];
   permissions: string[];
@@ -121,6 +122,7 @@ export class RolesManagementService {
       lastName: user.lastName,
       phone: user.phone,
       career: user.career,
+      avatarUrl: user.avatarUrl,
       isActive: user.isActive,
       roles,
       permissions: this.rbacService.getPermissions(roles),

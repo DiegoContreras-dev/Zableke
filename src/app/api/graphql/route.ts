@@ -9,6 +9,7 @@ import { usersResolvers, usersTypeDefs } from "@/backend/modules/users/resolvers
 import { attendanceResolvers, attendanceTypeDefs } from "@/backend/modules/attendance/resolvers/attendance.resolver";
 import { offeringsResolvers, offeringsTypeDefs } from "@/backend/modules/offerings/resolvers/offerings.resolver";
 import { careersResolvers, careersTypeDefs } from "@/backend/modules/careers/resolvers/careers.resolver";
+import { semestersResolvers, semestersTypeDefs } from "@/backend/modules/semesters/resolvers/semesters.resolver";
 import { createContext, type GraphQLContext } from "@/graphql/context";
 
 const typeDefs = `
@@ -27,6 +28,7 @@ const typeDefs = `
   ${attendanceTypeDefs}
   ${offeringsTypeDefs}
   ${careersTypeDefs}
+  ${semestersTypeDefs}
 `;
 
 const resolvers = {
@@ -38,6 +40,7 @@ const resolvers = {
     ...attendanceResolvers.Query,
     ...offeringsResolvers.Query,
     ...careersResolvers.Query,
+    ...semestersResolvers.Query,
   },
   Mutation: {
     ...authResolvers.Mutation,
@@ -47,6 +50,7 @@ const resolvers = {
     ...attendanceResolvers.Mutation,
     ...offeringsResolvers.Mutation,
     ...careersResolvers.Mutation,
+    ...semestersResolvers.Mutation,
   },
 };
 

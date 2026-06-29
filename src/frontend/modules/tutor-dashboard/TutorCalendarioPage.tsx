@@ -7,37 +7,35 @@ import { useQuery } from "@apollo/client/react";
 
 // ─── GraphQL ──────────────────────────────────────────────────────────────────
 
-const MY_SCHEDULES = gql`
-  query CalendarioMySchedules {
-    mySchedules {
+const MY_TUTORING_SLOTS = gql`
+  query CalendarioMyTutoringSlots {
+    myTutoringSlots {
       id
-      title
-      description
+      offeringName
       roomName
-      startsAt
-      endsAt
-      status
+      dayOfWeek
+      startTime
+      endTime
+      enrolledCount
+      maxCapacity
     }
   }
 `;
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface ScheduleItem {
+interface TutoringSlotItem {
   id: string;
-  title: string;
-  description: string | null;
+  offeringName: string;
   roomName: string | null;
-  startsAt: string;
-  endsAt: string;
-  status: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  enrolledCount: number;
+  maxCapacity: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-[#23415B] text-white",
-  COMPLETED: "bg-emerald-600 text-white",
-  CANCELLED: "bg-slate-400 text-white",
-};
+const DAY_KEYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 
 // ─── Bloques horarios ─────────────────────────────────────────────────────────
 
@@ -72,11 +70,10 @@ function toMinutes(hhmm: string): number {
 }
 
 function matchesBlock(
-  session: ScheduleItem,
+  slot: TutoringSlotItem,
   block: { start: string; end: string }
 ): boolean {
-  const d = new Date(session.startsAt);
-  const mins = d.getHours() * 60 + d.getMinutes();
+  const mins = toMinutes(slot.startTime);
   return mins >= toMinutes(block.start) && mins <= toMinutes(block.end);
 }
 
@@ -100,14 +97,14 @@ function addDays(date: Date, days: number): Date {
 export function TutorCalendarioPage() {
   const today = new Date();
 
-  const { data, loading, error } = useQuery<{ mySchedules: ScheduleItem[] }>(
-    MY_SCHEDULES,
+  const { data, loading, error } = useQuery<{ myTutoringSlots: TutoringSlotItem[] }>(
+    MY_TUTORING_SLOTS,
     { fetchPolicy: "cache-and-network" }
   );
 
   const [weekStart, setWeekStart] = useState(() => getMonday(today));
 
-  const schedules = data?.mySchedules ?? [];
+  const tutoringSlots = data?.myTutoringSlots ?? [];
 
   // Lunes a Sábado de la semana actual
   const weekDays = useMemo(
@@ -227,48 +224,39 @@ export function TutorCalendarioPage() {
                         {block.start}–{block.end}
                       </div>
                     </td>
-                    {weekDays.map((day, di) => {
-                      const sessions = schedules.filter(
-                        (s) =>
-                          isSameDay(new Date(s.startsAt), day) &&
-                          matchesBlock(s, block)
+                    {weekDays.map((_day, di) => {
+                      const slots = tutoringSlots.filter(
+                        (slot) =>
+                          slot.dayOfWeek === DAY_KEYS[di] &&
+                          matchesBlock(slot, block)
                       );
                       return (
                         <td
                           key={di}
                           className="border-b border-r border-slate-100 px-2 py-2 align-top"
                         >
-                          {sessions.length === 0 ? (
+                          {slots.length === 0 ? (
                             <span className="text-xs text-slate-200">—</span>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              {sessions.map((s) => {
-                                const colorClass =
-                                  STATUS_COLORS[s.status] ??
-                                  STATUS_COLORS["ACTIVE"]!;
-                                return (
+                              {slots.map((slot) => (
                                   <div
-                                    key={s.id}
-                                    className={`rounded p-1.5 text-xs ${colorClass}`}
+                                    key={slot.id}
+                                    className="rounded bg-[#23415B] p-1.5 text-xs text-white"
                                   >
                                     <div className="truncate font-semibold leading-tight">
-                                      {s.title}
+                                      {slot.offeringName}
                                     </div>
-                                    {s.roomName && (
+                                    {slot.roomName && (
                                       <div className="text-[10px] opacity-80">
-                                        {s.roomName}
+                                        {slot.roomName}
                                       </div>
                                     )}
                                     <div className="text-[10px] opacity-70">
-                                      {s.status === "ACTIVE"
-                                        ? "Activa"
-                                        : s.status === "COMPLETED"
-                                        ? "Completada"
-                                        : "Cancelada"}
+                                      {slot.startTime}–{slot.endTime} · {slot.enrolledCount}/{slot.maxCapacity}
                                     </div>
                                   </div>
-                                );
-                              })}
+                              ))}
                             </div>
                           )}
                         </td>

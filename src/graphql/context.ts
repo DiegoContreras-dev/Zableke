@@ -17,7 +17,7 @@ export interface GraphQLContext {
 }
 
 export async function createContext(
-  request?: Pick<NextRequest, "headers">
+  request?: Pick<NextRequest, "headers" | "cookies">
 ): Promise<GraphQLContext> {
   await ensurePrismaConnected();
 
@@ -25,7 +25,9 @@ export async function createContext(
 
   const authHeader = request?.headers?.get("authorization") ?? null;
   const token =
-    authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : request?.cookies?.get("zableke_session")?.value ?? null;
 
   if (token) {
     const payload = await verifyToken(token);

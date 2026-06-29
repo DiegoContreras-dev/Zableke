@@ -117,9 +117,9 @@ export class OfferingsRepository {
     });
   }
 
-  async findSlotsByTutor(tutorId: string): Promise<SlotRecord[]> {
+  async findSlotsByTutor(tutorId: string, semester: string): Promise<SlotRecord[]> {
     return this.db.tutoringSlot.findMany({
-      where: { tutorId, offering: { status: "OPEN" } },
+      where: { tutorId, offering: { status: "OPEN", semester } },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
       include: this.slotInclude(),
     });
@@ -144,6 +144,7 @@ export class OfferingsRepository {
 
   async findTutorSlotConflict(params: {
     tutorId: string;
+    semester: string;
     dayOfWeek: DayOfWeek;
     startTime: string;
     endTime: string;
@@ -152,6 +153,7 @@ export class OfferingsRepository {
     return this.db.tutoringSlot.findFirst({
       where: {
         tutorId: params.tutorId,
+        offering: { semester: params.semester },
         dayOfWeek: params.dayOfWeek,
         startTime: { lt: params.endTime },
         endTime: { gt: params.startTime },
@@ -163,6 +165,7 @@ export class OfferingsRepository {
 
   async findRoomSlotConflict(params: {
     roomName: string;
+    semester: string;
     dayOfWeek: DayOfWeek;
     startTime: string;
     endTime: string;
@@ -171,6 +174,7 @@ export class OfferingsRepository {
     return this.db.tutoringSlot.findFirst({
       where: {
         roomName: params.roomName,
+        offering: { semester: params.semester },
         dayOfWeek: params.dayOfWeek,
         startTime: { lt: params.endTime },
         endTime: { gt: params.startTime },
@@ -297,7 +301,7 @@ export class OfferingsRepository {
     return this.db.attendance.findMany({ where: { scheduleId } });
   }
 
-  async findTutorStats(): Promise<
+  async findTutorStats(semester: string): Promise<
     Array<{
       id: string;
       userId: string;
@@ -310,8 +314,11 @@ export class OfferingsRepository {
       where: { isActive: true, user: { isActive: true } },
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
-        _count: { select: { tutoringSlots: true } },
-        tutoringSlots: { select: { maxCapacity: true, _count: { select: { enrollments: true } } } },
+        _count: { select: { tutoringSlots: { where: { offering: { semester } } } } },
+        tutoringSlots: {
+          where: { offering: { semester } },
+          select: { maxCapacity: true, _count: { select: { enrollments: true } } },
+        },
       },
       orderBy: { user: { firstName: "asc" } },
     });

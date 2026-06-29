@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { CareersManagerModal } from "./CareersManagerModal";
+import { SemesterSelect } from "./components/SemesterSelect";
 
 const OFFERINGS = gql`
   query AdminOfferings($semester: String) {
@@ -310,11 +311,10 @@ export function AdminTutoriasPage() {
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 xl:w-auto">
-          <input
+          <SemesterSelect
             value={semester}
-            onChange={(event) => setSemester(event.target.value)}
+            onChange={setSemester}
             className="h-10 min-w-0 rounded-md border border-slate-300 px-3 text-sm sm:col-span-2 lg:col-span-1 lg:w-28"
-            aria-label="Semestre"
           />
           <button
             onClick={handleGlobalSync}

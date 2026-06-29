@@ -6,13 +6,16 @@ import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
 import {
   BarChart3,
   CalendarDays,
+  CalendarRange,
   ChevronDown,
   ClipboardList,
   LayoutDashboard,
   LogOut,
   Menu,
   ScrollText,
+  Settings,
   Shield,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -20,6 +23,20 @@ import {
   clearTutorSession,
   hasTutorSession,
 } from "@/frontend/modules/auth/services/session";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+
+const ADMIN_SHELL_ME = gql`
+  query AdminShellMe {
+    me {
+      id
+      email
+      firstName
+      lastName
+      avatarUrl
+    }
+  }
+`;
 
 const mainNavItems: ReadonlyArray<{
   href: string;
@@ -30,9 +47,11 @@ const mainNavItems: ReadonlyArray<{
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/tutores", label: "Tutores", icon: Users },
   { href: "/admin/tutorias", label: "Tutorías", icon: ClipboardList },
+  { href: "/admin/semestres", label: "Semestres", icon: CalendarRange },
   { href: "/admin/sesiones", label: "Sesiones", icon: CalendarDays },
   { href: "/admin/reportes", label: "Reportes", icon: BarChart3 },
   { href: "/admin/auditoria", label: "Monitoreo", icon: ScrollText },
+  { href: "/admin/integraciones", label: "Integraciones", icon: Settings },
 ];
 
 type AdminDashboardShellProps = {
@@ -46,6 +65,24 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const { data: meData, refetch: refetchMe } = useQuery<{
+    me: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      avatarUrl: string | null;
+    };
+  }>(ADMIN_SHELL_ME, { fetchPolicy: "cache-and-network" });
+  const me = meData?.me;
+  const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(" ") || "Administrador";
+  const initials = [me?.firstName, me?.lastName]
+    .filter(Boolean)
+    .map((part) => part?.[0])
+    .join("")
+    .toUpperCase() || "A";
+  const avatarUrl = me?.avatarUrl ? `${me.avatarUrl}?v=${avatarVersion}` : null;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -64,8 +101,17 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      setAvatarVersion(Date.now());
+      void refetchMe();
+    };
+    window.addEventListener("tutor_avatar_updated", handleAvatarUpdate);
+    return () => window.removeEventListener("tutor_avatar_updated", handleAvatarUpdate);
+  }, [refetchMe]);
+
   const pageTitle = useMemo(() => {
-    const selected = [...mainNavItems].reverse().find(
+    const selected = [...mainNavItems, { href: "/admin/perfil", label: "Mi perfil", icon: UserRound }].reverse().find(
       (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
     );
     return selected?.label ?? "Admin Dashboard";
@@ -150,21 +196,36 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
                 className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
                 aria-expanded={isProfileDropdownOpen}
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400 text-[#1B3A52] font-bold text-xs shrink-0">
-                  A
+                <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-amber-400 text-xs font-bold text-[#1B3A52] shrink-0">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
-                <span className="hidden text-sm font-medium text-white sm:block">Admin UCN</span>
+                <span className="hidden text-sm font-medium text-white sm:block">{fullName}</span>
                 <ChevronDown className="h-3.5 w-3.5 text-slate-300 hidden sm:block" />
               </button>
 
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-52 origin-top-right divide-y divide-slate-100 rounded-lg bg-white shadow-xl ring-1 ring-black/5">
                   <div className="px-4 py-3">
-                    <p className="text-sm font-semibold text-slate-900">Admin UCN</p>
-                    <p className="truncate text-xs text-slate-500">admin@ce.ucn.cl</p>
+                    <p className="text-sm font-semibold text-slate-900">{fullName}</p>
+                    <p className="truncate text-xs text-slate-500">{me?.email ?? ""}</p>
                     <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                       <Shield className="h-2.5 w-2.5" /> Administrador
                     </span>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      href="/admin/perfil"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-[#1B3A52]"
+                    >
+                      <UserRound className="h-4 w-4 text-slate-400" />
+                      Editar perfil
+                    </Link>
                   </div>
                   <div className="py-1">
                     <button

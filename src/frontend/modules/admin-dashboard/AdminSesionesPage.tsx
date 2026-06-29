@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { SemesterSelect } from "./components/SemesterSelect";
 import {
   AlertTriangle,
   CalendarDays,
@@ -105,11 +106,10 @@ export function AdminSesionesPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
+          <SemesterSelect
             value={semester}
-            onChange={(e) => setSemester(e.target.value)}
+            onChange={setSemester}
             className="h-10 w-28 rounded-md border border-slate-300 px-3 text-sm"
-            aria-label="Semestre"
           />
           {offerings.length > 0 && (
             <button

@@ -13,6 +13,7 @@ export const usersTypeDefs = `
     phone: String
     bio: String
     linkedinUrl: String
+    avatarUrl: String
     roles: [String!]!
     isActive: Boolean!
   }

@@ -27,6 +27,7 @@ const STATEMENTS = [
     "phone"       TEXT,
     "bio"         TEXT,
     "linkedinUrl" TEXT,
+    "avatarUrl"   TEXT,
     "isActive"    BOOLEAN     NOT NULL DEFAULT true,
     "createdAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -35,6 +36,7 @@ const STATEMENTS = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone"        TEXT`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bio"          TEXT`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "linkedinUrl"  TEXT`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatarUrl"    TEXT`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "firstName"    TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lastName"     TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "passwordHash" TEXT`,
@@ -72,6 +74,69 @@ const STATEMENTS = [
     "updatedAt"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "tutors_userId_key" ON "tutors"("userId")`,
+
+  // Google Drive integration
+  `CREATE TABLE IF NOT EXISTS "google_drive_connections" (
+    "id"                    TEXT        NOT NULL PRIMARY KEY DEFAULT 'primary',
+    "accountEmail"          TEXT,
+    "encryptedRefreshToken" TEXT,
+    "sharedDriveId"         TEXT,
+    "rootFolderId"          TEXT,
+    "rootFolderName"        TEXT,
+    "status"                TEXT        NOT NULL DEFAULT 'DISCONNECTED',
+    "lastError"             TEXT,
+    "createdAt"             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt"             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS "drive_semester_configs" (
+    "id"               TEXT        NOT NULL PRIMARY KEY,
+    "semester"         TEXT        NOT NULL,
+    "months"           INTEGER[]   NOT NULL,
+    "semesterFolderId" TEXT,
+    "createdAt"        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt"        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "drive_semester_configs_semester_key" ON "drive_semester_configs"("semester")`,
+  `CREATE TABLE IF NOT EXISTS "tutor_drive_folders" (
+    "id"        TEXT        NOT NULL PRIMARY KEY,
+    "tutorId"   TEXT        NOT NULL,
+    "semester"  TEXT        NOT NULL,
+    "folderId"  TEXT,
+    "folderUrl" TEXT,
+    "status"    TEXT        NOT NULL DEFAULT 'PENDING',
+    "lastError" TEXT,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "tutor_drive_folders_tutorId_semester_key" ON "tutor_drive_folders"("tutorId","semester")`,
+  `CREATE INDEX IF NOT EXISTS "tutor_drive_folders_semester_idx" ON "tutor_drive_folders"("semester")`,
+
+  // Academic semesters
+  `CREATE TABLE IF NOT EXISTS "academic_semesters" (
+    "code"      TEXT        NOT NULL PRIMARY KEY,
+    "startDate" TIMESTAMPTZ NOT NULL,
+    "endDate"   TIMESTAMPTZ NOT NULL,
+    "status"    TEXT        NOT NULL DEFAULT 'PLANNING',
+    "months"    INTEGER[]   NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS "academic_semesters_status_idx" ON "academic_semesters"("status")`,
+  `INSERT INTO "academic_semesters" ("code","startDate","endDate","status","months","createdAt","updatedAt")
+   SELECT
+     EXTRACT(YEAR FROM CURRENT_DATE)::int || '-' || CASE WHEN EXTRACT(MONTH FROM CURRENT_DATE) <= 7 THEN '1' ELSE '2' END,
+     CASE WHEN EXTRACT(MONTH FROM CURRENT_DATE) <= 7
+       THEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int,3,1)
+       ELSE make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int,8,1) END,
+     CASE WHEN EXTRACT(MONTH FROM CURRENT_DATE) <= 7
+       THEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int,7,31)
+       ELSE make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int,12,31) END,
+     'ACTIVE',
+     CASE WHEN EXTRACT(MONTH FROM CURRENT_DATE) <= 7
+       THEN ARRAY[3,4,5,6,7]
+       ELSE ARRAY[8,9,10,11,12] END,
+     NOW(), NOW()
+   WHERE NOT EXISTS (SELECT 1 FROM "academic_semesters")`,
 
   // rooms
   `CREATE TABLE IF NOT EXISTS "rooms" (

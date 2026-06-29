@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { User, Mail, ShieldCheck, MapPin, Briefcase, Camera, Loader2, Save, AlertCircle, CheckCircle2, Phone, X, Upload, Palette } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
+import { getSessionToken } from "@/frontend/modules/auth/services/session";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,7 @@ const ME_QUERY = gql`
       phone
       bio
       linkedinUrl
+      avatarUrl
       roles
     }
   }
@@ -35,8 +37,8 @@ const UPDATE_PROFILE = gql`
   }
 `;
 
-export function TutorProfilePage() {
-  const { data: meData, loading: meLoading } = useQuery<{
+export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "admin" }) {
+  const { data: meData, loading: meLoading, refetch: refetchMe } = useQuery<{
     me: {
       id: string;
       email: string;
@@ -45,6 +47,7 @@ export function TutorProfilePage() {
       phone: string | null;
       bio: string | null;
       linkedinUrl: string | null;
+      avatarUrl: string | null;
       roles: string[];
     };
   }>(ME_QUERY, { fetchPolicy: "cache-and-network" });
@@ -64,10 +67,12 @@ export function TutorProfilePage() {
     email: me?.email ?? "",
     role: (me?.roles ?? []).includes("ADMIN") ? "Administrador" : "Tutor Académico",
     campus: "Campus Guayacán - Coquimbo",
-    program: "Ingeniería en Computación e Informática",
+    program: variant === "admin" ? "Administración de tutorías" : "Ingeniería en Computación e Informática",
   };
 
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     phone: "",
     bio: "",
     linkedin: "",
@@ -76,6 +81,8 @@ export function TutorProfilePage() {
   useEffect(() => {
     if (me) {
       setFormData({
+        firstName: me.firstName ?? "",
+        lastName: me.lastName ?? "",
         phone: me.phone ?? "",
         bio: me.bio ?? "",
         linkedin: me.linkedinUrl ?? "",
@@ -89,6 +96,8 @@ export function TutorProfilePage() {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [temporaryAvatarUrl, setTemporaryAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
 
   const [bannerColor, setBannerColor] = useState("bg-[#23415B]");
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -99,29 +108,24 @@ export function TutorProfilePage() {
     setShowColorPicker(false);
   };
 
-  // Load initial avatar and subscribe to changes across components
   useEffect(() => {
-    const loadAvatar = () => {
-      const stored = localStorage.getItem('tutor_avatar');
-      if (stored) setAvatarUrl(stored);
-    };
-    
     const storedBanner = localStorage.getItem('tutor_banner');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (storedBanner) setBannerColor(storedBanner);
-
-    loadAvatar();
-    window.addEventListener('tutor_avatar_updated', loadAvatar);
-    return () => window.removeEventListener('tutor_avatar_updated', loadAvatar);
   }, []);
 
+  useEffect(() => {
+    if (me?.avatarUrl) setAvatarUrl(me.avatarUrl);
+  }, [me?.avatarUrl]);
+
   const phoneRegex = /^\+?[0-9\s\-]{8,15}$/;
-  const isPhoneValid = phoneRegex.test(formData.phone);
+  const isPhoneValid = !formData.phone || phoneRegex.test(formData.phone);
+  const isNameValid = Boolean(formData.firstName.trim() && formData.lastName.trim());
   const isBioValid = formData.bio.length <= 500;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isPhoneValid || !isBioValid) {
+    if (!isPhoneValid || !isBioValid || !isNameValid) {
       setToast({ type: 'error', message: 'Por favor, corrige los errores en el formulario.' });
       setTimeout(() => setToast(null), 3000);
       return;
@@ -132,6 +136,8 @@ export function TutorProfilePage() {
     updateMyProfile({
       variables: {
         input: {
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
           phone: formData.phone || undefined,
           bio: formData.bio || undefined,
           linkedinUrl: formData.linkedin || undefined,
@@ -149,17 +155,37 @@ export function TutorProfilePage() {
       .finally(() => setIsSaving(false));
   };
 
-  const applyAvatar = () => {    if (temporaryAvatarUrl) {
-      setAvatarUrl(temporaryAvatarUrl);
-      localStorage.setItem('tutor_avatar', temporaryAvatarUrl);
-      
-      // Dispatch event to update the shell header instantly
-      window.dispatchEvent(new Event('tutor_avatar_updated'));
+  const applyAvatar = async () => {
+    if (!avatarFile) return;
+    setIsAvatarUploading(true);
+    setToast(null);
+    try {
+      const body = new FormData();
+      body.append("avatar", avatarFile);
+      const token = getSessionToken();
+      const response = await fetch("/api/profile/avatar", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body,
+      });
+      if (!response.ok) throw new Error("Avatar upload failed");
+
+      const result = (await response.json()) as { avatarUrl: string };
+      const nextAvatarUrl = `${result.avatarUrl}?v=${Date.now()}`;
+      await refetchMe();
+      setAvatarUrl(nextAvatarUrl);
+      window.dispatchEvent(new Event("tutor_avatar_updated"));
+      setIsAvatarModalOpen(false);
+      setTemporaryAvatarUrl(null);
+      setAvatarFile(null);
+      setToast({ type: 'success', message: 'Foto actualizada exitosamente' });
+      setTimeout(() => setToast(null), 3000);
+    } catch {
+      setToast({ type: 'error', message: 'No fue posible guardar la foto.' });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setIsAvatarUploading(false);
     }
-    setIsAvatarModalOpen(false);
-    setTemporaryAvatarUrl(null);
-    setToast({ type: 'success', message: 'Foto actualizada exitosamente' });
-    setTimeout(() => setToast(null), 3000);
   };
 
   return (
@@ -285,7 +311,35 @@ export function TutorProfilePage() {
               </h4>
 
               <div className="space-y-3.5">
-                
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="firstName" className="mb-1 block text-[13px] font-medium text-slate-700">
+                      Nombre
+                    </label>
+                    <input
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      className={`block w-full rounded-md border px-2.5 py-1.5 text-[13px] shadow-sm focus:outline-none focus:ring-1 ${
+                        formData.firstName.trim() ? "border-slate-300 focus:border-[#23415B] focus:ring-[#23415B]" : "border-red-300"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className="mb-1 block text-[13px] font-medium text-slate-700">
+                      Apellido
+                    </label>
+                    <input
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      className={`block w-full rounded-md border px-2.5 py-1.5 text-[13px] shadow-sm focus:outline-none focus:ring-1 ${
+                        formData.lastName.trim() ? "border-slate-300 focus:border-[#23415B] focus:ring-[#23415B]" : "border-red-300"
+                      }`}
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Phone Field */}
                   <div>
@@ -398,6 +452,7 @@ export function TutorProfilePage() {
                 onClick={() => {
                   setIsAvatarModalOpen(false);
                   setTemporaryAvatarUrl(null);
+                  setAvatarFile(null);
                 }}
                 className="text-slate-400 hover:text-slate-600 transition-colors p-1"
               >
@@ -424,6 +479,14 @@ export function TutorProfilePage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      if (file.size > 2 * 1024 * 1024) {
+                        setToast({ type: "error", message: "La imagen debe pesar menos de 2 MB." });
+                        return;
+                      }
+                      if (temporaryAvatarUrl?.startsWith("blob:")) {
+                        URL.revokeObjectURL(temporaryAvatarUrl);
+                      }
+                      setAvatarFile(file);
                       setTemporaryAvatarUrl(URL.createObjectURL(file));
                     }
                   }}
@@ -436,20 +499,21 @@ export function TutorProfilePage() {
             
             <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
               <button 
-                onClick={() => {
-                  setIsAvatarModalOpen(false);
-                  setTemporaryAvatarUrl(null);
-                }}
+                  onClick={() => {
+                    setIsAvatarModalOpen(false);
+                    setTemporaryAvatarUrl(null);
+                    setAvatarFile(null);
+                  }}
                 className="px-3 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-100"
               >
                 Cancelar
               </button>
               <button 
                 onClick={applyAvatar}
-                disabled={!temporaryAvatarUrl}
+                disabled={!avatarFile || isAvatarUploading}
                 className="px-3 py-1 text-xs font-medium text-white bg-[#23415B] rounded-md hover:bg-[#1a3144] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Aplicar
+                {isAvatarUploading ? "Guardando…" : "Aplicar"}
               </button>
             </div>
           </div>

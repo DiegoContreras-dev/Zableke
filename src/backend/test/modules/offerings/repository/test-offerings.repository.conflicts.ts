@@ -28,6 +28,7 @@ test("OfferingsRepository.findRoomSlotConflict retorna null cuando no hay solapa
   const repo = new OfferingsRepository(db);
 
   const result = await repo.findRoomSlotConflict({
+    semester: "2026-1",
     roomName: "207",
     dayOfWeek: "MONDAY",
     startTime: "09:55",
@@ -42,6 +43,7 @@ test("OfferingsRepository.findRoomSlotConflict retorna el slot cuando hay solapa
   const repo = new OfferingsRepository(db);
 
   const result = await repo.findRoomSlotConflict({
+    semester: "2026-1",
     roomName: "207",
     dayOfWeek: "MONDAY",
     startTime: "09:55",
@@ -61,6 +63,7 @@ test("OfferingsRepository.findRoomSlotConflict excluye el slot indicado en exclu
   const repo = new OfferingsRepository(db);
 
   await repo.findRoomSlotConflict({
+    semester: "2026-1",
     roomName: "207",
     dayOfWeek: "TUESDAY",
     startTime: "11:40",
@@ -85,6 +88,7 @@ test("OfferingsRepository.findRoomSlotConflict NO incluye cláusula id cuando no
   const repo = new OfferingsRepository(db);
 
   await repo.findRoomSlotConflict({
+    semester: "2026-1",
     roomName: "207",
     dayOfWeek: "WEDNESDAY",
     startTime: "09:55",
@@ -108,6 +112,7 @@ test("OfferingsRepository.findRoomSlotConflict filtra por roomName, dayOfWeek y 
   const repo = new OfferingsRepository(db);
 
   await repo.findRoomSlotConflict({
+    semester: "2026-1",
     roomName: "Lab-301",
     dayOfWeek: "FRIDAY",
     startTime: "14:30",
@@ -129,6 +134,7 @@ test("OfferingsRepository.findTutorSlotConflict retorna null cuando no hay solap
   const repo = new OfferingsRepository(db);
 
   const result = await repo.findTutorSlotConflict({
+    semester: "2026-1",
     tutorId: "tutor-1",
     dayOfWeek: "MONDAY",
     startTime: "09:55",
@@ -145,6 +151,7 @@ test("OfferingsRepository.findTutorSlotConflict retorna el slot conflictivo", as
   const repo = new OfferingsRepository(db);
 
   const result = await repo.findTutorSlotConflict({
+    semester: "2026-1",
     tutorId: "tutor-1",
     dayOfWeek: "MONDAY",
     startTime: "09:55",

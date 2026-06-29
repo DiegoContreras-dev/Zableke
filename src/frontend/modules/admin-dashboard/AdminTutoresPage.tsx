@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormConfig, type FieldDef } from "@/frontend/hooks/useFormConfig";
 import {
   AlertTriangle,
@@ -9,10 +9,13 @@ import {
   ChevronRight,
   ChevronDown,
   GraduationCap,
+  HardDrive,
+  FolderOpen,
   Loader2,
   Mail,
   Pencil,
   Phone,
+  RefreshCw,
   Search,
   Shield,
   ShieldOff,
@@ -26,6 +29,109 @@ import {
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 
+type TutorDriveFolder = {
+  semester: string;
+  folderUrl: string | null;
+  status: string;
+  lastError: string | null;
+};
+
+function TutorDriveFolderControl({ tutorUserId }: { tutorUserId: string }) {
+  const [folder, setFolder] = useState<TutorDriveFolder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [provisioning, setProvisioning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    const response = await fetch(
+      `/api/admin/drive/folders?tutorUserId=${encodeURIComponent(tutorUserId)}`,
+      { cache: "no-store" },
+    );
+    const result = await response.json() as { folder: TutorDriveFolder | null; error?: string };
+    if (!response.ok) throw new Error(result.error || "No fue posible consultar Drive");
+    setFolder(result.folder);
+  };
+
+  useEffect(() => {
+    load()
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "Error de Drive"))
+      .finally(() => setLoading(false));
+  }, [tutorUserId]);
+
+  const provision = async () => {
+    setProvisioning(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/drive/folders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tutorUserId }),
+      });
+      const result = await response.json() as { folder?: TutorDriveFolder; error?: string };
+      if (!response.ok || !result.folder) {
+        throw new Error(result.error || "No fue posible crear la carpeta");
+      }
+      setFolder(result.folder);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Error de Drive");
+      await load().catch(() => undefined);
+    } finally {
+      setProvisioning(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+      <div className="flex items-center gap-2">
+        <HardDrive className="h-4 w-4 text-blue-600" />
+        <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+          Material en Google Drive
+        </p>
+      </div>
+      {loading ? (
+        <div className="mt-3 h-8 animate-pulse rounded-lg bg-blue-100" />
+      ) : (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-slate-600">
+            {folder?.status === "READY"
+              ? `Carpeta lista · ${folder.semester}`
+              : folder?.status === "FAILED"
+                ? "La creación falló. Puedes reintentar."
+                : "Este tutor todavía no tiene una carpeta asignada."}
+          </p>
+          {(error || folder?.lastError) && (
+            <p className="rounded-md bg-rose-50 px-2 py-1.5 text-[11px] text-rose-700">
+              {error || folder?.lastError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            {folder?.folderUrl && folder.status === "READY" && (
+              <a
+                href={folder.folderUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"
+              >
+                <FolderOpen className="h-3.5 w-3.5" /> Abrir carpeta
+              </a>
+            )}
+            <button
+              onClick={provision}
+              disabled={provisioning}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-700 px-3 py-2 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+            >
+              {provisioning
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <RefreshCw className="h-3.5 w-3.5" />}
+              {folder?.status === "READY" ? "Sincronizar" : folder ? "Reintentar" : "Crear carpeta"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TUTORES_QUERY = gql`
   query AdminTutoresAccess {
     usersAccess {
@@ -35,6 +141,7 @@ const TUTORES_QUERY = gql`
       lastName
       phone
       career
+      avatarUrl
       isActive
       roles
     }
@@ -117,6 +224,7 @@ interface UserAccessRow {
   lastName: string;
   phone?: string | null;
   career?: string | null;
+  avatarUrl?: string | null;
   isActive: boolean;
   roles: string[];
 }
@@ -178,6 +286,36 @@ function GradeBar({ grade }: { grade: number }) {
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+}
+
+function TutorAvatar({ user, name, size = "lg" }: {
+  user?: UserAccessRow;
+  name: string;
+  size?: "sm" | "lg";
+}) {
+  const [failed, setFailed] = useState(false);
+  const sizeClass = size === "sm" ? "h-8 w-8 text-xs" : "h-14 w-14 text-lg";
+
+  useEffect(() => {
+    setFailed(false);
+  }, [user?.id, user?.avatarUrl]);
+
+  if (user?.avatarUrl && !failed) {
+    return (
+      <img
+        src={`/api/profile/avatar?userId=${encodeURIComponent(user.id)}`}
+        alt={`Foto de ${name}`}
+        onError={() => setFailed(true)}
+        className={`${sizeClass} shrink-0 rounded-full border border-slate-200 object-cover`}
+      />
+    );
+  }
+
+  return (
+    <div className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full bg-[#23415B]/10 font-bold text-[#23415B]`}>
+      {initials(name)}
+    </div>
+  );
 }
 
 function StatCard({ label, value, description, icon: Icon, accent }: {
@@ -435,9 +573,7 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Avatar + nombre */}
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#23415B]/10 text-lg font-bold text-[#23415B]">
-              {initials(stat.name)}
-            </div>
+            <TutorAvatar user={user} name={stat.name} />
             <div>
               <p className="text-base font-semibold text-slate-900">{stat.name}</p>
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><Mail className="h-3 w-3" />{stat.email}</p>
@@ -522,6 +658,7 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
               </div>
             </div>
           )}
+          <TutorDriveFolderControl tutorUserId={stat.userId} />
           {/* Nota */}
           <div className={`rounded-xl border p-4 ${lbl.bg} ${lbl.border}`}>
             <p className={`text-xs font-semibold uppercase tracking-wider ${lbl.color}`}>Estado de desempeño</p>
@@ -735,7 +872,7 @@ export function AdminTutoresPage() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard label="Tutores activos" value={loading ? "—" : tutors.length} description="Con rol TUTOR asignado" icon={UserCheck} accent="bg-[#23415B]" />
           <StatCard label="Usuarios totales" value={loading ? "—" : users.length} description={`${totalActivos} activos`} icon={Users} accent="bg-emerald-600" />
-          <StatCard label="Cumplen (6-7)" value={loading ? "—" : cumpleCount} description="Tasa de ocupación alta" icon={CheckCircle2} accent="bg-emerald-500" />
+          <StatCard label="Cumplen (6-7)" value={loading ? "—" : cumpleCount} description="Tutores con buena calificación" icon={CheckCircle2} accent="bg-emerald-500" />
           <StatCard label="Revisar (<4)" value={loading ? "—" : revisarCount} description="Requieren seguimiento" icon={TrendingUp} accent="bg-rose-500" />
         </div>
 
@@ -784,9 +921,7 @@ export function AdminTutoresPage() {
                       <tr key={s.tutorId} onClick={() => setSelectedStat(s)} className="cursor-pointer transition-colors hover:bg-slate-50">
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#23415B]/10 text-xs font-bold text-[#23415B]">
-                              {initials(s.name)}
-                            </div>
+                            <TutorAvatar user={usersMap.get(s.email)} name={s.name} size="sm" />
                             <div>
                               <p className="font-medium text-slate-800">{s.name}</p>
                               <p className="text-xs text-slate-400">{s.email}</p>
@@ -865,9 +1000,7 @@ export function AdminTutoresPage() {
                         <tr key={user.id} className="transition-colors hover:bg-slate-50/70">
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#23415B]/10 text-xs font-bold text-[#23415B]">
-                                {(user.firstName[0] ?? "?").toUpperCase()}{(user.lastName[0] ?? "").toUpperCase()}
-                              </div>
+                              <TutorAvatar user={user} name={`${user.firstName} ${user.lastName}`} size="sm" />
                               <div>
                                 <p className="font-medium text-slate-800">{user.firstName} {user.lastName}</p>
                                 {stat && isTutor && <div className="mt-0.5"><GradeBar grade={stat.grade} /></div>}

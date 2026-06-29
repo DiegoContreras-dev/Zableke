@@ -4,10 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState, useRef, useEffect } from "react";
 import {
-  Bell,
   CalendarDays,
   ClipboardCheck,
-  Clock3,
   History,
   Home,
   Menu,
@@ -21,10 +19,24 @@ import {
   clearTutorSession,
   hasTutorSession,
 } from "@/frontend/modules/auth/services/session";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+
+const TUTOR_SHELL_ME = gql`
+  query TutorShellMe {
+    me {
+      id
+      email
+      firstName
+      lastName
+      avatarUrl
+    }
+  }
+`;
 
 const mainNavItems = [
   { href: "/tutor", label: "Inicio", icon: Home },
-  { href: "/tutor/estudiantes", label: "Mis Estudiantes", icon: Users },
+  { href: "/tutor/estudiantes", label: "Mis Tutorías", icon: Users },
   { href: "/tutor/asistencia", label: "Asistencia", icon: ClipboardCheck },
   { href: "/tutor/historial", label: "Historial", icon: History },
   { href: "/tutor/calendario", label: "Calendario", icon: CalendarDays },
@@ -41,7 +53,21 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const { data: meData, refetch: refetchMe } = useQuery<{
+    me: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      avatarUrl: string | null;
+    };
+  }>(TUTOR_SHELL_ME, { fetchPolicy: "cache-and-network" });
+  const me = meData?.me;
+  const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(" ") || "Tutor";
+  const avatarUrl = me?.avatarUrl
+    ? `${me.avatarUrl}?v=${avatarVersion}`
+    : null;
 
   // Resolve session on client after hydration to avoid SSR/client mismatch.
   useEffect(() => {
@@ -52,20 +78,18 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
     return () => window.clearTimeout(timeoutId);
   }, []);
 
-  // Sync avatar with local storage
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const storedAvatar = localStorage.getItem("tutor_avatar");
-      setAvatarUrl(storedAvatar);
+      setAvatarVersion(Date.now());
+      void refetchMe();
     };
 
-    handleAvatarUpdate(); // Load initial
     window.addEventListener("tutor_avatar_updated", handleAvatarUpdate);
 
     return () => {
       window.removeEventListener("tutor_avatar_updated", handleAvatarUpdate);
     };
-  }, []);
+  }, [refetchMe]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -81,8 +105,6 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
   const pageTitle = useMemo(() => {
     const allItems = [
       ...mainNavItems,
-      { href: "/tutor/disponibilidad", label: "Disponibilidad y bloques" },
-      { href: "/tutor/notificaciones", label: "Notificaciones" },
       { href: "/tutor/perfil", label: "Mi perfil" },
     ];
     const selected = allItems.find(
@@ -159,15 +181,6 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
 
           {/* Right section: Notifications & Profile Dropdown */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-4">
-            <Link
-              href="/tutor/notificaciones"
-              className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-[#23415B] transition-colors"
-              aria-label="Notificaciones"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#E5742A] ring-2 ring-white"></span>
-            </Link>
-
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -190,8 +203,8 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-slate-100 rounded-lg bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
                   <div className="px-4 py-3">
-                    <p className="text-sm font-medium text-slate-900">Tutor UCN</p>
-                    <p className="truncate text-sm text-slate-500">tutor.ucn@alumnos.ucn.cl</p>
+                    <p className="text-sm font-medium text-slate-900">{fullName}</p>
+                    <p className="truncate text-sm text-slate-500">{me?.email ?? ""}</p>
                   </div>
                   <div className="py-1">
                     <Link
@@ -201,14 +214,6 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
                     >
                       <UserRound className="h-4 w-4 text-slate-400 group-hover:text-[#23415B]" />
                       Editar perfil
-                    </Link>
-                    <Link
-                      href="/tutor/disponibilidad"
-                      className="group flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-[#23415B]"
-                      onClick={() => setIsProfileDropdownOpen(false)}
-                    >
-                      <Clock3 className="h-4 w-4 text-slate-400 group-hover:text-[#23415B]" />
-                      Disponibilidad y bloques
                     </Link>
                   </div>
                   <div className="py-1">

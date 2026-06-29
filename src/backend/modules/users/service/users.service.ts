@@ -14,6 +14,7 @@ export interface UserProfileView {
   phone: string | null;
   bio: string | null;
   linkedinUrl: string | null;
+  avatarUrl: string | null;
   roles: string[];
   isActive: boolean;
 }
@@ -27,6 +28,7 @@ function toView(record: UserRecord): UserProfileView {
     phone: record.phone ?? null,
     bio: record.bio ?? null,
     linkedinUrl: record.linkedinUrl ?? null,
+    avatarUrl: record.avatarUrl ?? null,
     roles: record.roles.map((ur) => ur.role.name),
     isActive: record.isActive,
   };

@@ -1,13 +1,13 @@
 ﻿"use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { SessionRow } from "./components/SessionRow";
-import { todaySessions, type TodaySession } from "./data";
+import type { TodaySession } from "./data";
 
 const MY_TUTORING_SLOTS = gql`
   query MyTutoringSlots {
@@ -73,18 +73,29 @@ export function TutorHomePage() {
   const formattedDate = useMemo(() => {
     return new Intl.DateTimeFormat("es-CL", { dateStyle: "full" }).format(new Date());
   }, []);
+  const [driveFolderUrl, setDriveFolderUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/drive/my-folder", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((result: { folder?: { folderUrl?: string; status?: string } } | null) => {
+        if (result?.folder?.status === "READY" && result.folder.folderUrl) {
+          setDriveFolderUrl(result.folder.folderUrl);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   const sessions = useMemo(() => {
-    if (!data?.myTutoringSlots?.length) return todaySessions;
+    if (!data?.myTutoringSlots?.length) return [];
     const today = dayByIndex[new Date().getDay()];
-    const live = data.myTutoringSlots
+    return data.myTutoringSlots
       .filter((s) => s.dayOfWeek === today)
       .slice(0, 2)
       .map(toTodaySession);
-    return live.length > 0 ? live : todaySessions;
   }, [data]);
 
-  const totalSchedules = data?.myTutoringSlots?.length ?? todaySessions.length;
+  const totalSchedules = data?.myTutoringSlots?.length ?? 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-x-hidden lg:gap-4.5">
@@ -104,15 +115,21 @@ export function TutorHomePage() {
             <span className="flex w-full items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 sm:w-auto">
               💡 ¡No olvides subir tu material a Drive!
             </span>
-            <a
-              href="https://drive.google.com"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#1a3146] sm:w-auto"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-              Subir a Drive
-            </a>
+            {driveFolderUrl ? (
+              <a
+                href={driveFolderUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#1a3146] sm:w-auto"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                Abrir mi carpeta
+              </a>
+            ) : (
+              <span className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-md bg-slate-300 px-4 py-2 text-sm font-medium text-slate-600 sm:w-auto">
+                Carpeta no asignada
+              </span>
+            )}
           </div>
         </div>
 

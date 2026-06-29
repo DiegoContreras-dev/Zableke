@@ -7,7 +7,7 @@ import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 
-import { attendanceStudents as demoStudents, attendanceDefaults, type StudentAttendance } from "./data";
+import type { StudentAttendance } from "./data";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { StudentAttendanceItem } from "./components/StudentAttendanceItem";
 
@@ -24,6 +24,15 @@ const MY_TUTORING_SLOTS = gql`
       endTime
       enrolledCount
       maxCapacity
+    }
+  }
+`;
+
+const ATTENDANCE_ME = gql`
+  query AttendanceMe {
+    me {
+      firstName
+      lastName
     }
   }
 `;
@@ -77,10 +86,8 @@ type SaveState = "idle" | "saving" | "success" | "error";
 
 type FormState = {
   scheduleId: string;
-  tutorName: string;
   sessionType: string;
   subject: string;
-  section: string;
   slot: string;
   room: string;
   modality: string;
@@ -93,17 +100,38 @@ type FormErrors = Partial<Record<keyof FormState | "students", string>>;
 
 const FORM_DEFAULTS: FormState = {
   scheduleId: "",
-  tutorName: attendanceDefaults.tutorName,
-  sessionType: attendanceDefaults.sessionType,
-  subject: attendanceDefaults.subject,
-  section: attendanceDefaults.section,
-  slot: attendanceDefaults.slot,
-  room: attendanceDefaults.room,
-  modality: attendanceDefaults.modality,
+  sessionType: "Programada",
+  subject: "",
+  slot: "",
+  room: "",
+  modality: "Presencial",
   date: "",
   objectives: "",
   appreciation: "",
 };
+
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Lunes",
+  TUESDAY: "Martes",
+  WEDNESDAY: "Miércoles",
+  THURSDAY: "Jueves",
+  FRIDAY: "Viernes",
+  SATURDAY: "Sábado",
+  SUNDAY: "Domingo",
+};
+
+const TIME_BLOCKS = [
+  { label: "A", start: "08:10" },
+  { label: "B", start: "09:55" },
+  { label: "C", start: "11:40" },
+  { label: "D", start: "14:30" },
+  { label: "E", start: "16:15" },
+  { label: "F", start: "18:00" },
+];
+
+function blockLabel(startTime: string): string {
+  return `Bloque ${TIME_BLOCKS.find((block) => block.start === startTime)?.label ?? "sin asignar"}`;
+}
 
 const fieldClassName =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-150 focus:border-[#23415B] focus:ring-1 focus:ring-[#23415B]";
@@ -178,6 +206,10 @@ export function TutorAttendancePage() {
   const { data: slotsData, loading: schedulesLoading } = useQuery<{
     myTutoringSlots: SlotOption[];
   }>(MY_TUTORING_SLOTS, { fetchPolicy: "cache-and-network" });
+  const { data: meData } = useQuery<{
+    me: { firstName: string; lastName: string };
+  }>(ATTENDANCE_ME, { fetchPolicy: "cache-and-network" });
+  const tutorName = [meData?.me.firstName, meData?.me.lastName].filter(Boolean).join(" ") || "Tutor";
 
   const { data: attendanceData, loading: attendanceLoading } = useQuery<{
     attendanceForSlot: { scheduleId: string; students: SlotAttendanceStudent[] };
@@ -191,7 +223,7 @@ export function TutorAttendancePage() {
 
   const scheduleOptions = useMemo(() => slotsData?.myTutoringSlots ?? [], [slotsData?.myTutoringSlots]);
   const attendanceStudents = useMemo(() => {
-    if (!form.scheduleId) return demoStudents;
+    if (!form.scheduleId) return [];
     return (attendanceData?.attendanceForSlot.students ?? []).map(slotToStudent);
   }, [attendanceData, form.scheduleId]);
 
@@ -206,9 +238,8 @@ export function TutorAttendancePage() {
         ...prev,
         scheduleId: slot.id,
         subject: slot.offeringName,
-        section: `${slot.enrolledCount}/${slot.maxCapacity} inscritos`,
         room: slot.roomName ?? "",
-        slot: `${slot.startTime} - ${slot.endTime}`,
+        slot: blockLabel(slot.startTime),
         date,
       }));
     }, 0);
@@ -242,9 +273,8 @@ export function TutorAttendancePage() {
       ...prev,
       scheduleId: slot.id,
       subject: slot.offeringName,
-      section: `${slot.enrolledCount}/${slot.maxCapacity} inscritos`,
-      room: slot.roomName ?? prev.room,
-      slot: `${slot.startTime} - ${slot.endTime}`,
+      room: slot.roomName ?? "",
+      slot: blockLabel(slot.startTime),
       date: prev.date || todayDateInput(),
     }));
     setErrors({});
@@ -356,7 +386,7 @@ export function TutorAttendancePage() {
                   >
                     <option value="">— Seleccionar tutoría —</option>
                     {scheduleOptions.map((s) => {
-                      const label = `${s.offeringName} · ${s.dayOfWeek} ${s.startTime}-${s.endTime}`;
+                      const label = `${s.offeringName} · ${DAY_LABELS[s.dayOfWeek] ?? s.dayOfWeek} · ${blockLabel(s.startTime)}`;
                       return (
                         <option key={s.id} value={s.id}>
                           {label}
@@ -381,7 +411,7 @@ export function TutorAttendancePage() {
                   type="text"
                   readOnly
                   disabled
-                  value={form.tutorName || "Tutor autenticado"}
+                  value={tutorName}
                   className={`${fieldClassName} cursor-not-allowed bg-slate-50 font-medium text-slate-700`}
                 />
               </div>
@@ -408,24 +438,13 @@ export function TutorAttendancePage() {
                 <input
                   type="text"
                   value={form.subject}
-                  onChange={(e) => updateField("subject", e.target.value)}
+                  readOnly
                   placeholder="Se rellena al seleccionar una sesión"
-                  className={fieldClassName}
+                  className={`${fieldClassName} cursor-not-allowed bg-slate-50`}
                 />
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <RequiredLabel text="Paralelo" />
-                  <input
-                    type="text"
-                    value={form.section}
-                    onChange={(e) => updateField("section", e.target.value)}
-                    placeholder="Ej: P1"
-                    className={fieldClassName}
-                  />
-                </div>
-                <div>
+              <div>
                   <RequiredLabel text="Modalidad" />
                   <select
                     value={form.modality}
@@ -436,7 +455,6 @@ export function TutorAttendancePage() {
                     <option>Online</option>
                     <option>Híbrida</option>
                   </select>
-                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -444,18 +462,18 @@ export function TutorAttendancePage() {
                   <label className="mb-1.5 block text-sm font-semibold text-slate-800">Horario</label>
                   <input
                     value={form.slot}
-                    onChange={(event) => updateField("slot", event.target.value)}
-                    placeholder="Ej: 10:20 - 11:50"
-                    className={fieldClassName}
+                    readOnly
+                    placeholder="Se rellena al seleccionar una sesión"
+                    className={`${fieldClassName} cursor-not-allowed bg-slate-50`}
                   />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-800">Sala</label>
                   <input
                     value={form.room}
-                    onChange={(event) => updateField("room", event.target.value)}
-                    placeholder="Ej: Lab 207"
-                    className={fieldClassName}
+                    readOnly
+                    placeholder="Se rellena al seleccionar una sesión"
+                    className={`${fieldClassName} cursor-not-allowed bg-slate-50`}
                   />
                 </div>
               </div>

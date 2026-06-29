@@ -18,6 +18,7 @@ model User {
   phone             String?
   bio               String?
   linkedinUrl       String?
+  avatarUrl         String?
   passwordHash      String?
   isActive          Boolean            @default(true)
   createdAt         DateTime           @default(now())
@@ -65,6 +66,7 @@ model Tutor {
   updatedAt     DateTime       @updatedAt
   schedules     Schedule[]
   tutoringSlots TutoringSlot[]
+  driveFolders  TutorDriveFolder[]
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tutors")
@@ -191,6 +193,62 @@ model GoogleFormLink {
   updatedAt    DateTime  @updatedAt
 
   @@map("google_form_links")
+}
+
+model GoogleDriveConnection {
+  id                    String   @id @default("primary")
+  accountEmail          String?
+  encryptedRefreshToken String?
+  sharedDriveId         String?
+  rootFolderId          String?
+  rootFolderName        String?
+  status                String   @default("DISCONNECTED")
+  lastError             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("google_drive_connections")
+}
+
+model DriveSemesterConfig {
+  id               String   @id @default(cuid())
+  semester         String   @unique
+  months           Int[]
+  semesterFolderId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("drive_semester_configs")
+}
+
+model AcademicSemester {
+  code      String   @id
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("PLANNING")
+  months    Int[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("academic_semesters")
+}
+
+model TutorDriveFolder {
+  id        String   @id @default(cuid())
+  tutorId   String
+  semester  String
+  folderId  String?
+  folderUrl String?
+  status    String   @default("PENDING")
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, semester])
+  @@index([semester])
+  @@map("tutor_drive_folders")
 }
 
 model Career {

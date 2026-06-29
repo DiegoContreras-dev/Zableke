@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useLazyQuery, useQuery } from "@apollo/client/react";
+import { SemesterSelect } from "./components/SemesterSelect";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import {
   AlertTriangle,
@@ -396,11 +397,10 @@ export function AdminReportesPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
+          <SemesterSelect
             value={semester}
-            onChange={(e) => setSemester(e.target.value)}
+            onChange={setSemester}
             className="h-10 w-28 rounded-md border border-slate-300 px-3 text-sm"
-            aria-label="Semestre"
           />
           <button
             onClick={() => refetch()}

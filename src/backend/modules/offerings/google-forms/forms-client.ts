@@ -3,6 +3,7 @@ import { SignJWT, importPKCS8 } from "jose";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const FORMS_URL = "https://forms.googleapis.com/v1/forms";
+const DRIVE_URL = "https://www.googleapis.com/drive/v3/files";
 const SCOPE = "https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/forms.responses.readonly https://www.googleapis.com/auth/drive";
 
 interface TokenResponse {
@@ -78,6 +79,19 @@ export class ServiceAccountFormsClient implements GoogleFormsClient {
     });
     const formId = typeof json.formId === "string" ? json.formId : "";
     if (!formId) throw new AuthError("Google did not return a formId", "GOOGLE_VERIFY_ERROR", 502);
+
+    const editorEmail = process.env.GOOGLE_FORM_EDITOR_EMAIL?.trim();
+    if (editorEmail) {
+      await this.request(`${DRIVE_URL}/${formId}/permissions?sendNotificationEmail=true`, {
+        method: "POST",
+        body: JSON.stringify({
+          type: "user",
+          role: "writer",
+          emailAddress: editorEmail,
+        }),
+      });
+    }
+
     return {
       formId,
       formUrl: `https://docs.google.com/forms/d/${formId}/viewform`,

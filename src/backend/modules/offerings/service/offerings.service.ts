@@ -1,6 +1,5 @@
 import { AuthError } from "@/backend/common/errors/auth.error";
 import {
-  getCurrentSemester,
   parseCreateEnrollmentInput,
   parseCreateOfferingInput,
   parseCreateSlotInput,
@@ -28,6 +27,8 @@ import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 
 import { ServiceAccountFormsClient } from "@/backend/modules/offerings/google-forms/forms-client";
 import { syncResponses } from "@/backend/modules/offerings/google-forms/response-sync";
+import { DriveService } from "@/backend/modules/drive/drive-service";
+import { SemestersService } from "@/backend/modules/semesters/service/semesters.service";
 import { prisma } from "@/infrastructure/prisma/client";
 
 function toSlotView(slot: SlotRecord): SlotView {
@@ -117,13 +118,18 @@ type GoogleFormsBatchReply = {
 };
 
 export class OfferingsService {
-  constructor(private readonly repo = new OfferingsRepository()) {}
+  constructor(
+    private readonly repo = new OfferingsRepository(),
+    private readonly semesters = new SemestersService(),
+  ) {}
 
   async createOffering(rawInput: unknown, createdById: string): Promise<OfferingView> {
     const input = parseCreateOfferingInput(rawInput);
+    const semester = input.semester ?? await this.semesters.activeCode();
+    await this.semesters.assertWritable(semester);
     const offering = await this.repo.createOffering({
       name: input.name,
-      semester: input.semester ?? getCurrentSemester(),
+      semester,
       targetCareers: input.targetCareers ?? [],
       createdById,
     });
@@ -138,7 +144,7 @@ export class OfferingsService {
   }
 
   async getOfferingsBySemester(semester?: string): Promise<OfferingView[]> {
-    const offerings = await this.repo.findOfferingsBySemester(semester ?? getCurrentSemester());
+    const offerings = await this.repo.findOfferingsBySemester(semester ?? await this.semesters.activeCode());
     return offerings.map(toOfferingView);
   }
 
@@ -161,6 +167,7 @@ export class OfferingsService {
   async addSlot(rawInput: unknown): Promise<SlotView> {
     const input = parseCreateSlotInput(rawInput);
     const offering = await this.getOfferingRecord(input.offeringId);
+    await this.semesters.assertWritable(offering.semester);
     if (offering.status !== "OPEN") {
       throw new AuthError("Cannot add slots to a closed offering", "INVALID_STATE", 400);
     }
@@ -171,10 +178,11 @@ export class OfferingsService {
     }
 
     const [tutorConflict, roomConflict] = await Promise.all([
-      this.repo.findTutorSlotConflict(input),
+      this.repo.findTutorSlotConflict({ ...input, semester: offering.semester }),
       input.roomName
         ? this.repo.findRoomSlotConflict({
             roomName: input.roomName,
+            semester: offering.semester,
             dayOfWeek: input.dayOfWeek,
             startTime: input.startTime,
             endTime: input.endTime,
@@ -199,6 +207,11 @@ export class OfferingsService {
     }
 
     const slot = await this.repo.createSlot(input);
+    try {
+      await new DriveService().provisionTutorFolder(tutor.userId, offering.semester);
+    } catch (error) {
+      console.error("Automatic Drive folder provisioning failed:", error);
+    }
     return toSlotView(slot);
   }
 
@@ -209,10 +222,10 @@ export class OfferingsService {
     return true;
   }
 
-  async getSlotsByTutor(userId: string): Promise<SlotView[]> {
+  async getSlotsByTutor(userId: string, semester?: string): Promise<SlotView[]> {
     const tutorId = await this.repo.findTutorIdByUserId(userId);
     if (!tutorId) return [];
-    const slots = await this.repo.findSlotsByTutor(tutorId);
+    const slots = await this.repo.findSlotsByTutor(tutorId, semester ?? await this.semesters.activeCode());
     return slots.map(toSlotView);
   }
 
@@ -222,7 +235,7 @@ export class OfferingsService {
   }
 
   async getTutorStats(): Promise<import("@/backend/modules/offerings/model/offering.model").TutorStatView[]> {
-    const tutors = await this.repo.findTutorStats();
+    const tutors = await this.repo.findTutorStats(await this.semesters.activeCode());
     return tutors.map((t) => {
       const totalStudents = t.tutoringSlots.reduce((s, sl) => s + sl._count.enrollments, 0);
       const totalCapacity = t.tutoringSlots.reduce((s, sl) => s + sl.maxCapacity, 0);
@@ -309,7 +322,8 @@ export class OfferingsService {
   }
 
   async generateGoogleForm(semester?: string, existingFormId?: string): Promise<GoogleFormLinkView> {
-    const targetSemester = semester ?? getCurrentSemester();
+    const targetSemester = semester ?? await this.semesters.activeCode();
+    await this.semesters.assertWritable(targetSemester);
     const offerings = await this.repo.findOfferingsBySemester(targetSemester);
     const openOfferings = offerings.filter((offering) => offering.status === "OPEN" && offering.slots.length > 0);
     if (openOfferings.length === 0) {
@@ -426,15 +440,17 @@ export class OfferingsService {
   }
 
   async syncGoogleFormResponses(semester?: string): Promise<SyncResultView> {
+    const targetSemester = semester ?? await this.semesters.activeCode();
+    await this.semesters.assertWritable(targetSemester);
     return syncResponses({
-      semester: semester ?? getCurrentSemester(),
+      semester: targetSemester,
       client: new ServiceAccountFormsClient(),
       repo: this.repo,
     });
   }
 
   async getReportStats(semester?: string) {
-    const target = semester ?? getCurrentSemester();
+    const target = semester ?? await this.semesters.activeCode();
     const { offerings, careerGroups } = await this.repo.findReportStats(target);
     return {
       activeOfferingsCount: offerings.filter((o) => o.status === "OPEN").length,
@@ -449,7 +465,7 @@ export class OfferingsService {
   }
 
   async getAllEnrollments(semester?: string) {
-    const rows = await this.repo.findAllEnrollments(semester ?? getCurrentSemester());
+    const rows = await this.repo.findAllEnrollments(semester ?? await this.semesters.activeCode());
     return rows.map((e) => ({ ...e, enrolledAt: e.enrolledAt.toISOString() }));
   }
 
