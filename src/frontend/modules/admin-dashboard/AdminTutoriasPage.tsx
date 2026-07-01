@@ -29,6 +29,7 @@ const OFFERINGS = gql`
       id
       name
       schoolName
+      color
     }
   }
 `;
@@ -87,6 +88,7 @@ interface CareerOption {
   id: string;
   name: string;
   schoolName: string;
+  color: string | null;
 }
 
 function currentSemester(): string {
@@ -116,6 +118,10 @@ const blockOptions = [
 
 function blockByLabel(label: string) {
   return blockOptions.find((block) => block.label === label) ?? blockOptions[0];
+}
+
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
 export function AdminTutoriasPage() {
@@ -156,9 +162,9 @@ export function AdminTutoriasPage() {
 
   const offerings = useMemo(() => data?.offerings ?? [], [data?.offerings]);
   const filteredOfferings = useMemo(() => {
-    const needle = searchTerm.trim().toLowerCase();
+    const needle = normalize(searchTerm.trim());
     if (!needle) return offerings;
-    return offerings.filter((offering) => offering.name.toLowerCase().includes(needle));
+    return offerings.filter((offering) => normalize(offering.name).includes(needle));
   }, [offerings, searchTerm]);
   const tutors = data?.tutorOptions ?? [];
   const careerOptions = data?.careers ?? [];
@@ -307,7 +313,7 @@ export function AdminTutoriasPage() {
           <p className="text-sm font-medium text-slate-500">Semestre {semester}</p>
           <h1 className="text-2xl font-bold text-slate-900">Ofertas de Tutoría</h1>
           <p className="mt-1 text-sm text-slate-600">
-            {filteredOfferings.length} oferta(s), {totalEnrollments} estudiante(s) inscrito(s).
+            Asignaturas ofertadas con sus horarios semanales e inscritos. {filteredOfferings.length} oferta(s) · {totalEnrollments} estudiante(s) inscrito(s).
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 xl:w-auto">
@@ -614,6 +620,10 @@ export function AdminTutoriasPage() {
                           else setTargetCareers((prev) => prev.filter((c) => c !== career.name));
                         }}
                         className="rounded border-slate-300 text-[#23415B] focus:ring-[#23415B]"
+                      />
+                      <span
+                        className="inline-block h-3 w-3 shrink-0 rounded-full border border-slate-200"
+                        style={{ backgroundColor: career.color ?? "#6B7280" }}
                       />
                       {career.name}
                     </label>

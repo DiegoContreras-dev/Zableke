@@ -213,6 +213,9 @@ const STATEMENTS = [
     "scheduleId" TEXT
   )`,
 
+  // careers — add color column if missing
+  `ALTER TABLE "careers" ADD COLUMN IF NOT EXISTS "color" TEXT`,
+
   // seed roles
   `INSERT INTO "roles" ("id","name","description","createdAt","updatedAt")
    VALUES ('role_admin','ADMIN','Administrador del sistema',NOW(),NOW()),

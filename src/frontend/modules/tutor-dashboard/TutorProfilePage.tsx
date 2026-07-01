@@ -284,12 +284,14 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
                   </p>
                   <p className="text-sm font-medium text-slate-900 bg-slate-50 px-2.5 py-1.5 rounded-md border border-slate-100">{systemData.campus}</p>
                 </div>
+                {variant !== "admin" && (
                 <div>
                   <p className="text-xs font-medium text-slate-500 mb-1 flex items-center gap-1.5">
                     <Briefcase className="h-3.5 w-3.5" /> Carrera
                   </p>
                   <p className="text-sm font-medium text-slate-900 bg-slate-50 px-2.5 py-1.5 rounded-md border border-slate-100">{systemData.program}</p>
                 </div>
+                )}
               </div>
             </div>
             
@@ -407,9 +409,11 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
                     } bg-white shadow-sm focus:outline-none focus:ring-1 transition-colors resize-none`}
                     placeholder="Experiencia, metodología, metas..."
                   />
+                  {variant !== "admin" && (
                   <p className="mt-1 text-xs text-slate-500 max-w-sm">
                     Visible para organizar tutorías contigo.
                   </p>
+                  )}
                 </div>
               </div>
             </div>

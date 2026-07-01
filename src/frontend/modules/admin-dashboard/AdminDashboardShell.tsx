@@ -157,10 +157,6 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
                 alt="Éxito Académico UCN"
                 className="h-9 w-auto object-contain"
               />
-              <div className="hidden sm:flex items-center gap-1.5 ml-1">
-                <Shield className="h-4 w-4 text-amber-400" />
-                <span className="text-sm font-semibold text-white">Panel Admin</span>
-              </div>
             </div>
 
             {/* Desktop Navigation */}

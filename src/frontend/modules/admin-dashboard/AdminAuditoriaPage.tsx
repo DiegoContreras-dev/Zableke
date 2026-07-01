@@ -34,6 +34,7 @@ const TUTOR_STATS = gql`
       userId
       name
       email
+      avatarUrl
       totalSlots
       totalStudents
       totalCapacity
@@ -94,6 +95,7 @@ interface TutorStat {
   userId: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
   totalSlots: number;
   totalStudents: number;
   totalCapacity: number;
@@ -152,6 +154,10 @@ const FORM_DEFAULTS: FormState = {
   objectives: "",
   appreciation: "",
 };
+
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -228,8 +234,13 @@ function TutorGrid({
         >
           {/* Avatar + nombre */}
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#23415B]/10 text-sm font-bold text-[#23415B]">
-              {initials(tutor.name)}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#23415B]/10 text-sm font-bold text-[#23415B]">
+              {tutor.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={tutor.avatarUrl} alt={tutor.name} className="h-full w-full object-cover" />
+              ) : (
+                initials(tutor.name)
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-slate-900">{tutor.name}</p>
@@ -752,9 +763,9 @@ export function AdminAuditoriaPage() {
 
   const tutors = useMemo(() => statsData?.tutorStats ?? [], [statsData]);
   const filteredTutors = useMemo(() => {
-    const needle = tutorSearch.trim().toLowerCase();
+    const needle = normalize(tutorSearch.trim());
     if (!needle) return tutors;
-    return tutors.filter((tutor) => tutor.name.toLowerCase().includes(needle));
+    return tutors.filter((tutor) => normalize(tutor.name).includes(needle));
   }, [tutors, tutorSearch]);
   const slots = useMemo(() => slotsData?.tutoringSlotsByTutor ?? [], [slotsData]);
 

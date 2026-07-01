@@ -247,6 +247,10 @@ function groupCareersBySchool(careers: CareerOption[]) {
   }));
 }
 
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 interface TutorStat {
   tutorId: string;
   userId: string;
@@ -680,7 +684,7 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
           </div>
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
-            {[["Slots asignados", stat.totalSlots], ["Estudiantes", stat.totalStudents], ["Capacidad total", stat.totalCapacity], ["Ocupación", `${pct}%`]].map(([label, value]) => (
+            {[["Tutorías asignadas", stat.totalSlots], ["Estudiantes inscritos", stat.totalStudents], ["Capacidad total", stat.totalCapacity], ["Ocupación", `${pct}%`]].map(([label, value]) => (
               <div key={label as string} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
                 <p className="text-xs text-slate-400">{label}</p>
                 <p className="mt-0.5 text-xl font-bold text-slate-800">{value}</p>
@@ -691,7 +695,7 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
           {stat.totalCapacity > 0 && (
             <div>
               <div className="mb-1.5 flex items-center justify-between text-xs text-slate-500">
-                <span>Ocupación del slot</span>
+                <span>Ocupación</span>
                 <span className="font-semibold">{stat.totalStudents}/{stat.totalCapacity} estudiantes</span>
               </div>
               <div className="h-2.5 w-full rounded-full bg-slate-100">
@@ -773,9 +777,9 @@ export function AdminTutoresPage() {
   const usersMap = useMemo(() => new Map(users.map((u) => [u.email, u])), [users]);
 
   const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    const needle = normalize(search.trim());
     return users.filter((u) => {
-      const matchesSearch = !needle || u.email.toLowerCase().includes(needle) || `${u.firstName} ${u.lastName}`.toLowerCase().includes(needle);
+      const matchesSearch = !needle || normalize(u.email).includes(needle) || normalize(`${u.firstName} ${u.lastName}`).includes(needle);
       const isTutor = u.roles.includes("TUTOR");
       const matchesRole = filterRole === "ALL" || (filterRole === "TUTOR" && isTutor) || (filterRole === "NO_TUTOR" && !isTutor);
       return matchesSearch && matchesRole;
@@ -888,10 +892,10 @@ export function AdminTutoresPage() {
         {tab === "desempeno" && (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs text-slate-500">
-              <span className="font-semibold text-slate-600">Escala 1–7 basada en ocupación de slots:</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> 6–7 Cumple</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> 4–5 Regular</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> 1–3 Revisar</span>
+              <span className="font-semibold text-slate-600">Nota = % ocupación → escala 1–7:</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> 6–7 Cumple (≥83% ocupación)</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> 4–5 Regular (50–83%)</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> 1–3 Revisar (&lt;50%)</span>
               <span className="ml-auto italic text-slate-400">Haz clic en un tutor para ver detalle</span>
             </div>
             {loading ? (
@@ -906,7 +910,7 @@ export function AdminTutoresPage() {
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tutor</th>
-                    <th className="hidden px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:table-cell">Slots</th>
+                    <th className="hidden px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:table-cell">Tutorías</th>
                     <th className="hidden px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:table-cell">Estudiantes</th>
                     <th className="hidden px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 md:table-cell">Ocupación</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Nota</th>

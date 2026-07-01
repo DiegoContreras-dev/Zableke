@@ -334,6 +334,12 @@ export function TutorAttendancePage() {
       const records = ((result.data as Record<string, unknown>)?.["recordBulkAttendance"] ?? []) as Array<{ status: string }>;
       setSavedCount(records.filter((r) => r.status === "PRESENT").length);
       setSaveState("success");
+      window.setTimeout(() => {
+        setForm(FORM_DEFAULTS);
+        setSelectedStudents(new Set());
+        setGeneratedScheduleId("");
+        setSaveState("idle");
+      }, 3000);
     } catch (err) {
       console.error("Error al guardar asistencia:", err);
       setSaveState("error");

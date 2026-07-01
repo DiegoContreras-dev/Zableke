@@ -24,7 +24,8 @@ export class CareersRepository {
     return prisma.career.create({
       data: {
         name: input.name,
-        schoolName: input.schoolName
+        schoolName: input.schoolName,
+        color: input.color ?? null,
       }
     });
   }

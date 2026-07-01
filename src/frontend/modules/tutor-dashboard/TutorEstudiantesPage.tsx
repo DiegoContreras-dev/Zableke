@@ -79,6 +79,10 @@ function initials(name: string): string {
     .join("");
 }
 
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 // ─── Componente de slot expandible ───────────────────────────────────────────
 
 function SlotCard({ slot }: { slot: TutoringSlot }) {
@@ -100,14 +104,14 @@ function SlotCard({ slot }: { slot: TutoringSlot }) {
 
   const students = data?.enrolledStudents ?? [];
   const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    const needle = normalize(search.trim());
     if (!needle) return students;
     return students.filter(
       (s) =>
-        s.studentName.toLowerCase().includes(needle) ||
-        s.studentEmail.toLowerCase().includes(needle) ||
-        (s.studentRut ?? "").toLowerCase().includes(needle) ||
-        (s.studentCareer ?? "").toLowerCase().includes(needle)
+        normalize(s.studentName).includes(needle) ||
+        normalize(s.studentEmail).includes(needle) ||
+        normalize(s.studentRut ?? "").includes(needle) ||
+        normalize(s.studentCareer ?? "").includes(needle)
     );
   }, [students, search]);
 

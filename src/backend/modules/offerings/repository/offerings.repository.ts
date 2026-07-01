@@ -305,7 +305,7 @@ export class OfferingsRepository {
     Array<{
       id: string;
       userId: string;
-      user: { firstName: string; lastName: string; email: string };
+      user: { firstName: string; lastName: string; email: string; avatarUrl: string | null };
       _count: { tutoringSlots: number };
       tutoringSlots: Array<{ maxCapacity: number; _count: { enrollments: number } }>;
     }>
@@ -313,7 +313,7 @@ export class OfferingsRepository {
     return this.db.tutor.findMany({
       where: { isActive: true, user: { isActive: true } },
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, avatarUrl: true } },
         _count: { select: { tutoringSlots: { where: { offering: { semester } } } } },
         tutoringSlots: {
           where: { offering: { semester } },

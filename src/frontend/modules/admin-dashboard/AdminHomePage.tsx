@@ -232,9 +232,9 @@ export function AdminHomePage() {
           borderColor="border-t-[#23415B]"
         />
         <StatCard
-          label="Sesiones totales"
+          label="Registros de asistencia"
           value={loading ? "—" : totalSesiones}
-          description={`${totalSesionesSemana} esta semana · ${sesionesActivas} activas`}
+          description={`${totalSesionesSemana} esta semana · ${sesionesActivas} activos`}
           icon={CalendarDays}
           accent="bg-emerald-600"
           borderColor="border-t-emerald-600"

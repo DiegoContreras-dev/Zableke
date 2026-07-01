@@ -76,6 +76,7 @@ export interface TutorStatView {
   userId: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
   totalSlots: number;
   totalStudents: number;
   totalCapacity: number;

@@ -246,6 +246,7 @@ export class OfferingsService {
         userId: t.userId,
         name: `${t.user.firstName} ${t.user.lastName}`,
         email: t.user.email,
+        avatarUrl: t.user.avatarUrl ?? null,
         totalSlots: t._count.tutoringSlots,
         totalStudents,
         totalCapacity,

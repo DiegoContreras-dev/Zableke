@@ -84,6 +84,7 @@ export const offeringsTypeDefs = `
     userId: String!
     name: String!
     email: String!
+    avatarUrl: String
     totalSlots: Int!
     totalStudents: Int!
     totalCapacity: Int!

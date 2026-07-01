@@ -152,8 +152,20 @@ export function TutorHistorialPage() {
   }, [data]);
 
   const totalSessions = grouped.length;
-  const totalPresent = grouped.reduce((s, g) => s + g.presentCount, 0);
-  const totalStudents = grouped.reduce((s, g) => s + g.records.length, 0);
+  const uniqueStudents = new Set(
+    data?.myAttendanceHistory.map((item) => item.studentEmail) ?? []
+  ).size;
+  const avgAttendanceRate =
+    grouped.length > 0
+      ? Math.round(
+          (grouped.reduce(
+            (s, g) => s + (g.records.length > 0 ? g.presentCount / g.records.length : 0),
+            0,
+          ) /
+            grouped.length) *
+            100,
+        )
+      : 0;
 
   const toggleSession = (scheduleId: string) => {
     setExpandedSessions((prev) => {
@@ -187,15 +199,15 @@ export function TutorHistorialPage() {
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Total estudiantes
+              Estudiantes únicos
             </p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{totalStudents}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{uniqueStudents}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Presentes totales
+              Asistencia promedio
             </p>
-            <p className="mt-1 text-3xl font-bold text-emerald-600">{totalPresent}</p>
+            <p className="mt-1 text-3xl font-bold text-emerald-600">{avgAttendanceRate}%</p>
           </div>
         </div>
       )}

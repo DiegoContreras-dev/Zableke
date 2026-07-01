@@ -23,7 +23,8 @@ export class CareersService {
     }
     return this.repo.create({
       name: input.name.trim(),
-      schoolName: input.schoolName.trim()
+      schoolName: input.schoolName.trim(),
+      color: input.color ?? null,
     });
   }
 
@@ -41,7 +42,8 @@ export class CareersService {
 
     const updated = await this.repo.update(id, {
       name: newName,
-      schoolName: newSchoolName
+      schoolName: newSchoolName,
+      color: input.color,
     });
 
     // Handle cascading updates if the name changed

@@ -10,6 +10,7 @@ export const careersTypeDefs = `
     id: ID!
     name: String!
     schoolName: String!
+    color: String
     createdAt: String!
     updatedAt: String!
   }
@@ -17,11 +18,13 @@ export const careersTypeDefs = `
   input CreateCareerInput {
     name: String!
     schoolName: String!
+    color: String
   }
 
   input UpdateCareerInput {
     name: String
     schoolName: String
+    color: String
   }
 
   extend type Query {

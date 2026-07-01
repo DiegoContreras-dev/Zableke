@@ -9,6 +9,7 @@ import {
   type UserWithRolesRecord,
 } from "@/backend/modules/roles/repository/roles.repository";
 import { RbacService } from "@/backend/modules/roles/service/rbac.service";
+import { prisma } from "@/infrastructure/prisma/client";
 
 export interface UserAccessView {
   id: string;
@@ -76,6 +77,13 @@ export class RolesManagementService {
 
     await this.repository.assignRoleToUser(user.id, roleRecord.id);
 
+    if (normalizedRole === "TUTOR") {
+      await prisma.tutor.updateMany({
+        where: { userId: user.id },
+        data: { isActive: true },
+      });
+    }
+
     const updatedUser = await this.repository.findUserByEmail(normalizedEmail);
     if (!updatedUser) {
       throw new AuthError("User not found after role assignment", "RESOURCE_NOT_FOUND", 404);
@@ -103,6 +111,13 @@ export class RolesManagementService {
     }
 
     await this.repository.removeRoleFromUser(user.id, roleRecord.id);
+
+    if (normalizedRole === "TUTOR") {
+      await prisma.tutor.updateMany({
+        where: { userId: user.id },
+        data: { isActive: false },
+      });
+    }
 
     const updatedUser = await this.repository.findUserByEmail(normalizedEmail);
     if (!updatedUser) {
