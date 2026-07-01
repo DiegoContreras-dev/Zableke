@@ -36,3 +36,47 @@ export function getSessionToken(): string | null {
   const value = pair.slice(SESSION_COOKIE_NAME.length + 1);
   return value.length > 0 ? decodeURIComponent(value) : null;
 }
+
+function base64UrlDecode(segment: string): string {
+  const base64 = segment.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  return atob(padded);
+}
+
+/**
+ * Reads the `roles` claim out of a JWT without verifying its signature.
+ * Only for client-side UI routing/UX; the real authorization boundary is
+ * the signature-verified check in the GraphQL context/resolvers.
+ */
+export function decodeRolesFromToken(token: string): string[] {
+  const parts = token.split(".");
+  if (parts.length !== 3) return [];
+  try {
+    const payload = JSON.parse(base64UrlDecode(parts[1])) as { roles?: unknown };
+    return Array.isArray(payload.roles)
+      ? payload.roles.filter((role): role is string => typeof role === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getSessionRoles(): string[] {
+  const token = getSessionToken();
+  return token ? decodeRolesFromToken(token) : [];
+}
+
+/**
+ * Decides where a dashboard shell should redirect a user whose roles don't
+ * include the role required by that shell. Dual-role users get sent to the
+ * shell they *do* have access to instead of being bounced to /login.
+ */
+export function resolveRequiredRoleRedirect(
+  roles: string[],
+  requiredRole: "ADMIN" | "TUTOR",
+): string | null {
+  if (roles.includes(requiredRole)) return null;
+  if (requiredRole === "ADMIN" && roles.includes("TUTOR")) return "/tutor";
+  if (requiredRole === "TUTOR" && roles.includes("ADMIN")) return "/admin";
+  return "/login";
+}

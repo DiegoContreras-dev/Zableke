@@ -21,7 +21,9 @@ import {
 } from "lucide-react";
 import {
   clearTutorSession,
+  getSessionRoles,
   hasTutorSession,
+  resolveRequiredRoleRedirect,
 } from "@/frontend/modules/auth/services/session";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
@@ -62,6 +64,8 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [roleRedirectPath, setRoleRedirectPath] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -86,7 +90,13 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      setHasActiveSession(hasTutorSession());
+      const sessionExists = hasTutorSession();
+      setHasActiveSession(sessionExists);
+      if (sessionExists) {
+        const redirect = resolveRequiredRoleRedirect(getSessionRoles(), "ADMIN");
+        setIsAuthorized(redirect === null);
+        setRoleRedirectPath(redirect);
+      }
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, []);
@@ -123,6 +133,12 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
     }
   }, [hasActiveSession, router]);
 
+  useEffect(() => {
+    if (roleRedirectPath) {
+      router.replace(roleRedirectPath);
+    }
+  }, [roleRedirectPath, router]);
+
   const handleLogout = () => {
     clearTutorSession();
     setHasActiveSession(false);
@@ -131,7 +147,7 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
     router.replace("/login");
   };
 
-  if (hasActiveSession !== true) {
+  if (hasActiveSession !== true || isAuthorized !== true) {
     return <div className="min-h-screen bg-[#F0F4F8]" aria-label="Comprobando sesión" />;
   }
 
