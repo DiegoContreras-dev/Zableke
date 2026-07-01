@@ -5,6 +5,7 @@ import { User, Mail, ShieldCheck, MapPin, Briefcase, Camera, Loader2, Save, Aler
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { getSessionToken } from "@/frontend/modules/auth/services/session";
+import { buildProfileFormData } from "@/frontend/modules/tutor-dashboard/lib/profile-form";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ const ME_QUERY = gql`
       bio
       linkedinUrl
       avatarUrl
+      career
       roles
     }
   }
@@ -48,6 +50,7 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
       bio: string | null;
       linkedinUrl: string | null;
       avatarUrl: string | null;
+      career: string | null;
       roles: string[];
     };
   }>(ME_QUERY, { fetchPolicy: "cache-and-network" });
@@ -67,7 +70,7 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
     email: me?.email ?? "",
     role: (me?.roles ?? []).includes("ADMIN") ? "Administrador" : "Tutor Académico",
     campus: "Campus Guayacán - Coquimbo",
-    program: variant === "admin" ? "Administración de tutorías" : "Ingeniería en Computación e Informática",
+    program: variant === "admin" ? "Administración de tutorías" : (me?.career || "No especificada"),
   };
 
   const [formData, setFormData] = useState({
@@ -80,15 +83,13 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
 
   useEffect(() => {
     if (me) {
-      setFormData({
-        firstName: me.firstName ?? "",
-        lastName: me.lastName ?? "",
-        phone: me.phone ?? "",
-        bio: me.bio ?? "",
-        linkedin: me.linkedinUrl ?? "",
-      });
+      setFormData(buildProfileFormData(me));
     }
   }, [me]);
+
+  const handleDiscard = () => {
+    setFormData(buildProfileFormData(me));
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -422,6 +423,7 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
             <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl shrink-0 mt-auto">
               <button
                 type="button"
+                onClick={handleDiscard}
                 className="px-3.5 py-1.5 text-[13px] font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#23415B]"
               >
                 Descartar

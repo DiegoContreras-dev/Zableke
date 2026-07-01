@@ -236,18 +236,18 @@ export const offeringsResolvers = {
       args: { id: string; input: unknown },
       context: GraphQLContext
     ) => {
-      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.updateOffering(args.id, args.input);
+      const user = requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.updateOffering(args.id, args.input, user.id);
     },
 
     closeOffering: async (_: unknown, args: { id: string }, context: GraphQLContext) => {
-      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.closeOffering(args.id);
+      const user = requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.closeOffering(args.id, user.id);
     },
 
     deleteOffering: async (_: unknown, args: { id: string }, context: GraphQLContext) => {
-      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.deleteOffering(args.id);
+      const user = requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.deleteOffering(args.id, user.id);
     },
 
     addSlotToOffering: async (
@@ -269,13 +269,13 @@ export const offeringsResolvers = {
       args: { input: unknown },
       context: GraphQLContext
     ) => {
-      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.createEnrollment(args.input);
+      const user = requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.createEnrollment(args.input, user.id);
     },
 
     removeEnrollment: async (_: unknown, args: { enrollmentId: string }, context: GraphQLContext) => {
-      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.removeEnrollment(args.enrollmentId);
+      const user = requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.removeEnrollment(args.enrollmentId, user.id);
     },
 
     generateGoogleForm: async (

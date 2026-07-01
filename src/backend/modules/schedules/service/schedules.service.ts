@@ -7,6 +7,7 @@ import {
 } from "@/backend/modules/schedules/dto/schedule.dto";
 import type { ScheduleView } from "@/backend/modules/schedules/model/schedule.model";
 import { SchedulesRepository } from "@/backend/modules/schedules/repository/schedules.repository";
+import { AuditLogRepository } from "@/backend/modules/audit/repository/audit-log.repository";
 
 function toView(r: { id: string; tutorId: string; roomId: string | null; roomName?: string | null; room?: { name: string; location?: string | null } | null; createdById: string; title: string; description: string | null; startsAt: Date; endsAt: Date; status: string; createdAt: Date; updatedAt: Date }): ScheduleView {
   return {
@@ -26,7 +27,10 @@ function toView(r: { id: string; tutorId: string; roomId: string | null; roomNam
 }
 
 export class SchedulesService {
-  constructor(private readonly repo = new SchedulesRepository()) {}
+  constructor(
+    private readonly repo = new SchedulesRepository(),
+    private readonly auditLog = new AuditLogRepository(),
+  ) {}
 
   async getSchedule(id: string): Promise<ScheduleView> {
     const schedule = await this.repo.findById(id);
@@ -87,10 +91,18 @@ export class SchedulesService {
       endsAt,
     });
 
-    return toView(schedule);
+    const view = toView(schedule);
+    await this.auditLog.record({
+      actorId: createdById,
+      entity: "Schedule",
+      entityId: view.id,
+      action: "CREATE",
+      afterData: view,
+    });
+    return view;
   }
 
-  async updateSchedule(rawInput: unknown): Promise<ScheduleView> {
+  async updateSchedule(rawInput: unknown, actorId?: string): Promise<ScheduleView> {
     const input: UpdateScheduleInput = parseUpdateScheduleInput(rawInput);
 
     const existing = await this.repo.findById(input.id);
@@ -139,10 +151,19 @@ export class SchedulesService {
       ...(input.endsAt !== undefined ? { endsAt } : {}),
     });
 
-    return toView(updated);
+    const view = toView(updated);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Schedule",
+      entityId: input.id,
+      action: "UPDATE",
+      beforeData: toView(existing),
+      afterData: view,
+    });
+    return view;
   }
 
-  async cancelSchedule(id: string): Promise<ScheduleView> {
+  async cancelSchedule(id: string, actorId?: string): Promise<ScheduleView> {
     const existing = await this.repo.findById(id);
     if (!existing) {
       throw new AuthError("Schedule not found", "RESOURCE_NOT_FOUND", 404);
@@ -151,6 +172,15 @@ export class SchedulesService {
       throw new AuthError("Schedule is already cancelled", "INVALID_STATE", 400);
     }
     const updated = await this.repo.cancel(id);
-    return toView(updated);
+    const view = toView(updated);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Schedule",
+      entityId: id,
+      action: "CANCEL",
+      beforeData: { status: existing.status },
+      afterData: { status: view.status },
+    });
+    return view;
   }
 }

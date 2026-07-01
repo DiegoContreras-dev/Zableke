@@ -89,9 +89,9 @@ export const schedulesResolvers = {
       args: { input: unknown },
       context: GraphQLContext
     ) => {
-      requireUser(context.currentUser);
+      const user = requireUser(context.currentUser);
       requirePermission(context.currentUser, "WRITE_OWN_SCHEDULES");
-      return schedulesService.updateSchedule(args.input);
+      return schedulesService.updateSchedule(args.input, user.id);
     },
 
     cancelSchedule: async (
@@ -99,9 +99,9 @@ export const schedulesResolvers = {
       args: { id: string },
       context: GraphQLContext
     ) => {
-      requireUser(context.currentUser);
+      const user = requireUser(context.currentUser);
       requirePermission(context.currentUser, "WRITE_OWN_SCHEDULES");
-      return schedulesService.cancelSchedule(args.id);
+      return schedulesService.cancelSchedule(args.id, user.id);
     },
   },
 };

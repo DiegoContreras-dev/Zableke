@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { countOpenSlotsForToday } from "@/frontend/modules/admin-dashboard/lib/home-stats";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
 
@@ -25,10 +26,18 @@ const ADMIN_OVERVIEW = gql`
       isActive
       roles
     }
-    allSchedules {
+    reportStats {
+      activeOfferingsCount
+      closedOfferingsCount
+      totalSlots
+      totalStudents
+    }
+    offerings {
       id
       status
-      startsAt
+      slots {
+        dayOfWeek
+      }
     }
   }
 `;
@@ -42,10 +51,17 @@ interface UserAccess {
   roles: string[];
 }
 
-interface Schedule {
+interface ReportStats {
+  activeOfferingsCount: number;
+  closedOfferingsCount: number;
+  totalSlots: number;
+  totalStudents: number;
+}
+
+interface OfferingOverview {
   id: string;
   status: string;
-  startsAt: string;
+  slots: { dayOfWeek: string }[];
 }
 
 // ─── Componentes locales ─────────────────────────────────────────────────────
@@ -126,11 +142,13 @@ export function AdminHomePage() {
 
   const { data, loading, error } = useQuery<{
     usersAccess: UserAccess[];
-    allSchedules: Schedule[];
+    reportStats: ReportStats;
+    offerings: OfferingOverview[];
   }>(ADMIN_OVERVIEW, { fetchPolicy: "cache-and-network" });
 
   const users = data?.usersAccess ?? [];
-  const schedules = data?.allSchedules ?? [];
+  const offerings = data?.offerings ?? [];
+  const reportStats = data?.reportStats;
 
   const totalTutores = users.filter((u) => u.roles.includes("TUTOR")).length;
   const totalAdmins = users.filter((u) => u.roles.includes("ADMIN")).length;
@@ -139,47 +157,10 @@ export function AdminHomePage() {
     (u) => !u.roles.includes("ADMIN") && !u.roles.includes("TUTOR"),
   ).length;
 
-  const totalSesiones = schedules.length;
-  const sesionesActivas = schedules.filter((s) => s.status === "ACTIVE").length;
-
-  const parseDate = (dStr: string) => {
-    const asNum = Number(dStr);
-    return new Date(isNaN(asNum) ? dStr : asNum);
-  };
-
-  const sesionesHoy = schedules.filter((s) => {
-    const d = parseDate(s.startsAt);
-    return (
-      d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate()
-    );
-  }).length;
-
-  // Calcular sesiones de la semana actual dinámicamente
-  const startOfWeek = new Date(today);
-  const dayOfWeek = startOfWeek.getDay() === 0 ? 7 : startOfWeek.getDay();
-  startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek + 1);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(endOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  const weekCounts = { Lun: 0, Mar: 0, Mié: 0, Jue: 0, Vie: 0, Sáb: 0 };
-  const getDayName = (d: Date) => ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][d.getDay()];
-
-  schedules.forEach((s) => {
-    const d = parseDate(s.startsAt);
-    if (d >= startOfWeek && d <= endOfWeek) {
-      const name = getDayName(d);
-      if (name in weekCounts) {
-        weekCounts[name as keyof typeof weekCounts]++;
-      }
-    }
-  });
-
-  const totalSesionesSemana = Object.values(weekCounts).reduce((sum, count) => sum + count, 0);
+  const tutoriasActivas = reportStats?.activeOfferingsCount ?? 0;
+  const totalHorarios = reportStats?.totalSlots ?? 0;
+  const totalEstudiantes = reportStats?.totalStudents ?? 0;
+  const sesionesHoy = countOpenSlotsForToday(offerings, today);
 
   const roleSections = [
     {
@@ -232,9 +213,9 @@ export function AdminHomePage() {
           borderColor="border-t-[#23415B]"
         />
         <StatCard
-          label="Registros de asistencia"
-          value={loading ? "—" : totalSesiones}
-          description={`${totalSesionesSemana} esta semana · ${sesionesActivas} activos`}
+          label="Tutorías activas"
+          value={loading ? "—" : tutoriasActivas}
+          description={`${totalHorarios} horarios · ${totalEstudiantes} inscritos`}
           icon={CalendarDays}
           accent="bg-emerald-600"
           borderColor="border-t-emerald-600"

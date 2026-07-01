@@ -29,6 +29,7 @@ import { ServiceAccountFormsClient } from "@/backend/modules/offerings/google-fo
 import { syncResponses } from "@/backend/modules/offerings/google-forms/response-sync";
 import { DriveService } from "@/backend/modules/drive/drive-service";
 import { SemestersService } from "@/backend/modules/semesters/service/semesters.service";
+import { AuditLogRepository } from "@/backend/modules/audit/repository/audit-log.repository";
 import { prisma } from "@/infrastructure/prisma/client";
 
 function toSlotView(slot: SlotRecord): SlotView {
@@ -121,6 +122,7 @@ export class OfferingsService {
   constructor(
     private readonly repo = new OfferingsRepository(),
     private readonly semesters = new SemestersService(),
+    private readonly auditLog = new AuditLogRepository(),
   ) {}
 
   async createOffering(rawInput: unknown, createdById: string): Promise<OfferingView> {
@@ -133,14 +135,31 @@ export class OfferingsService {
       targetCareers: input.targetCareers ?? [],
       createdById,
     });
-    return toOfferingView(offering);
+    const view = toOfferingView(offering);
+    await this.auditLog.record({
+      actorId: createdById,
+      entity: "Offering",
+      entityId: view.id,
+      action: "CREATE",
+      afterData: view,
+    });
+    return view;
   }
 
-  async updateOffering(id: string, rawInput: unknown): Promise<OfferingView> {
-    await this.getOfferingRecord(id);
+  async updateOffering(id: string, rawInput: unknown, actorId?: string): Promise<OfferingView> {
+    const before = await this.getOfferingRecord(id);
     const input = parseUpdateOfferingInput(rawInput);
     const offering = await this.repo.updateOffering(id, input);
-    return toOfferingView(offering);
+    const view = toOfferingView(offering);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Offering",
+      entityId: id,
+      action: "UPDATE",
+      beforeData: toOfferingView(before),
+      afterData: view,
+    });
+    return view;
   }
 
   async getOfferingsBySemester(semester?: string): Promise<OfferingView[]> {
@@ -152,15 +171,31 @@ export class OfferingsService {
     return toOfferingView(await this.getOfferingRecord(id));
   }
 
-  async closeOffering(id: string): Promise<OfferingView> {
-    await this.getOfferingRecord(id);
+  async closeOffering(id: string, actorId?: string): Promise<OfferingView> {
+    const before = await this.getOfferingRecord(id);
     const offering = await this.repo.updateOffering(id, { status: "CLOSED" });
-    return toOfferingView(offering);
+    const view = toOfferingView(offering);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Offering",
+      entityId: id,
+      action: "CLOSE",
+      beforeData: { status: before.status },
+      afterData: { status: view.status },
+    });
+    return view;
   }
 
-  async deleteOffering(id: string): Promise<boolean> {
-    await this.getOfferingRecord(id);
+  async deleteOffering(id: string, actorId?: string): Promise<boolean> {
+    const before = await this.getOfferingRecord(id);
     await this.repo.deleteOffering(id);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Offering",
+      entityId: id,
+      action: "DELETE",
+      beforeData: toOfferingView(before),
+    });
     return true;
   }
 
@@ -256,15 +291,29 @@ export class OfferingsService {
     });
   }
 
-  async createEnrollment(rawInput: unknown): Promise<EnrollmentView> {
+  async createEnrollment(rawInput: unknown, actorId?: string): Promise<EnrollmentView> {
     const input = parseCreateEnrollmentInput(rawInput);
     const data = await this.prepareEnrollment(input);
     const enrollment = await this.repo.createEnrollment(data);
-    return toEnrollmentView(enrollment);
+    const view = toEnrollmentView(enrollment);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Enrollment",
+      entityId: view.id,
+      action: "CREATE",
+      afterData: view,
+    });
+    return view;
   }
 
-  async removeEnrollment(enrollmentId: string): Promise<boolean> {
+  async removeEnrollment(enrollmentId: string, actorId?: string): Promise<boolean> {
     await this.repo.deleteEnrollment(enrollmentId);
+    await this.auditLog.record({
+      actorId: actorId ?? null,
+      entity: "Enrollment",
+      entityId: enrollmentId,
+      action: "DELETE",
+    });
     return true;
   }
 

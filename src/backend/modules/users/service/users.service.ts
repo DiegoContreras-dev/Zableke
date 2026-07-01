@@ -15,11 +15,12 @@ export interface UserProfileView {
   bio: string | null;
   linkedinUrl: string | null;
   avatarUrl: string | null;
+  career: string | null;
   roles: string[];
   isActive: boolean;
 }
 
-function toView(record: UserRecord): UserProfileView {
+export function toView(record: UserRecord): UserProfileView {
   return {
     id: record.id,
     email: record.email,
@@ -29,6 +30,7 @@ function toView(record: UserRecord): UserProfileView {
     bio: record.bio ?? null,
     linkedinUrl: record.linkedinUrl ?? null,
     avatarUrl: record.avatarUrl ?? null,
+    career: record.career ?? null,
     roles: record.roles.map((ur) => ur.role.name),
     isActive: record.isActive,
   };

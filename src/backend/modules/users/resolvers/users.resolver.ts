@@ -14,6 +14,7 @@ export const usersTypeDefs = `
     bio: String
     linkedinUrl: String
     avatarUrl: String
+    career: String
     roles: [String!]!
     isActive: Boolean!
   }
