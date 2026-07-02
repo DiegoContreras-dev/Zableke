@@ -90,6 +90,15 @@ export const offeringsTypeDefs = `
     email: String!
   }
 
+  type TutorSlotGradeInfo {
+    slotId: ID!
+    offeringName: String!
+    dayOfWeek: String!
+    startTime: String!
+    endTime: String!
+    adminGrade: Float
+  }
+
   type TutorPerformanceStat {
     tutorId: ID!
     userId: String!
@@ -101,6 +110,7 @@ export const offeringsTypeDefs = `
     totalCapacity: Int!
     fillRate: Float!
     grade: Float!
+    slots: [TutorSlotGradeInfo!]!
   }
 
   type CareerCount {
@@ -179,6 +189,7 @@ export const offeringsTypeDefs = `
     addSlotToOffering(input: AddSlotInput!): TutoringSlot!
     removeSlot(slotId: ID!): Boolean!
     updateSlot(slotId: ID!, input: UpdateSlotInput!): TutoringSlot!
+    setSlotGrade(slotId: ID!, grade: Float): TutoringSlot!
     createEnrollment(input: CreateEnrollmentInput!): EnrollmentRecord!
     removeEnrollment(enrollmentId: ID!): Boolean!
     generateGoogleForm(semester: String, existingFormId: String, googleAccessToken: String): GoogleFormResult!
@@ -299,6 +310,15 @@ export const offeringsResolvers = {
     ) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
       return offeringsService.updateSlot(args.slotId, args.input);
+    },
+
+    setSlotGrade: async (
+      _: unknown,
+      args: { slotId: string; grade?: number | null },
+      context: GraphQLContext
+    ) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.setSlotGrade(args.slotId, args.grade ?? null);
     },
 
     createEnrollment: async (

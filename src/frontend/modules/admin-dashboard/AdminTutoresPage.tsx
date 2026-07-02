@@ -156,6 +156,14 @@ const TUTORES_QUERY = gql`
       totalCapacity
       fillRate
       grade
+      slots {
+        slotId
+        offeringName
+        dayOfWeek
+        startTime
+        endTime
+        adminGrade
+      }
     }
     careers {
       id
@@ -217,6 +225,14 @@ const CREATE_TUTOR = gql`
   }
 `;
 
+const SET_SLOT_GRADE = gql`
+  mutation SetSlotGrade($slotId: ID!, $grade: Float) {
+    setSlotGrade(slotId: $slotId, grade: $grade) {
+      id
+    }
+  }
+`;
+
 
 interface UserAccessRow {
   id: string;
@@ -252,6 +268,15 @@ function normalize(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+interface TutorSlotGrade {
+  slotId: string;
+  offeringName: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  adminGrade: number | null;
+}
+
 interface TutorStat {
   tutorId: string;
   userId: string;
@@ -262,6 +287,7 @@ interface TutorStat {
   totalCapacity: number;
   fillRate: number;
   grade: number;
+  slots: TutorSlotGrade[];
 }
 
 function gradeLabel(grade: number) {
@@ -528,19 +554,25 @@ function AddTutorModal({ onCreate, onClose, creating, careers }: {
   );
 }
 
-function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, deleting, onSaveEdit, saving, careers }: {
+function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, deleting, onSaveEdit, saving, careers, onSetSlotGrade }: {
   stat: TutorStat; user?: UserAccessRow; onClose: () => void;
   onRevoke: () => void; revoking: boolean;
   onDelete: () => void; deleting: boolean;
   onSaveEdit: (data: { firstName: string; lastName: string; phone: string; career: string }) => Promise<void>;
   saving: boolean;
   careers: CareerOption[];
+  onSetSlotGrade: (slotId: string, grade: number | null) => Promise<void>;
 }) {
   const careerGroups = useMemo(() => groupCareersBySchool(careers), [careers]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "", career: "" });
   const [careerDropOpen, setCareerDropOpen] = useState(false);
+  const [gradeInputs, setGradeInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(stat.slots.map((s) => [s.slotId, s.adminGrade !== null ? String(s.adminGrade) : ""]))
+  );
+  const [savingGrade, setSavingGrade] = useState<string | null>(null);
+  const [gradeError, setGradeError] = useState<string | null>(null);
 
   function openEdit() {
     setEditForm({
@@ -557,6 +589,27 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
     await onSaveEdit(editForm);
     setEditing(false);
   }
+
+  async function handleSaveGrade(slotId: string) {
+    setGradeError(null);
+    const raw = gradeInputs[slotId]?.trim();
+    const grade = raw === "" ? null : parseFloat(raw);
+    if (grade !== null && (isNaN(grade) || grade < 1 || grade > 7)) {
+      setGradeError("La nota debe estar entre 1.0 y 7.0");
+      return;
+    }
+    setSavingGrade(slotId);
+    try {
+      await onSetSlotGrade(slotId, grade);
+    } finally {
+      setSavingGrade(null);
+    }
+  }
+
+  const dayLabel: Record<string, string> = {
+    MONDAY: "Lun", TUESDAY: "Mar", WEDNESDAY: "Mié",
+    THURSDAY: "Jue", FRIDAY: "Vie", SATURDAY: "Sáb",
+  };
 
   const lbl = gradeLabel(stat.grade);
   const pct = stat.totalCapacity > 0 ? Math.round(stat.fillRate * 100) : 0;
@@ -664,13 +717,13 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
             </div>
           )}
           <TutorDriveFolderControl tutorUserId={stat.userId} />
-          {/* Nota */}
+          {/* Nota promedio */}
           <div className={`rounded-xl border p-4 ${lbl.bg} ${lbl.border}`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${lbl.color}`}>Estado de desempeño</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${lbl.color}`}>Nota promedio</p>
             <div className="mt-2 flex items-end justify-between">
               <div>
                 <p className={`text-4xl font-bold ${lbl.color}`}>{stat.grade === 0 ? "—" : stat.grade.toFixed(1)}</p>
-                <p className={`mt-0.5 text-xs ${lbl.color} opacity-70`}>Escala 1–7</p>
+                <p className={`mt-0.5 text-xs ${lbl.color} opacity-70`}>Promedio de tutorías calificadas</p>
               </div>
               <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${lbl.bg} ${lbl.color} ${lbl.border}`}>{lbl.text}</span>
             </div>
@@ -683,6 +736,48 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
               </div>
             </div>
           </div>
+          {/* Notas por tutoría */}
+          {stat.slots.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100">
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Notas por tutoría</p>
+                <p className="text-xs text-slate-400 mt-0.5">Escala 1.0 – 7.0. Dejar vacío para sin nota.</p>
+              </div>
+              {gradeError && (
+                <p className="px-4 py-2 text-xs text-rose-600 bg-rose-50 border-b border-rose-100">{gradeError}</p>
+              )}
+              <div className="divide-y divide-slate-100">
+                {stat.slots.map((slot) => (
+                  <div key={slot.slotId} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-slate-800">{slot.offeringName}</p>
+                      <p className="text-xs text-slate-400">{dayLabel[slot.dayOfWeek] ?? slot.dayOfWeek} · {slot.startTime}–{slot.endTime}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <input
+                        type="number"
+                        min="1" max="7" step="0.1"
+                        placeholder="—"
+                        value={gradeInputs[slot.slotId] ?? ""}
+                        onChange={(e) => {
+                          setGradeError(null);
+                          setGradeInputs((prev) => ({ ...prev, [slot.slotId]: e.target.value }));
+                        }}
+                        className="w-16 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-center text-sm font-semibold text-slate-800 focus:border-[#23415B] focus:outline-none focus:ring-1 focus:ring-[#23415B]"
+                      />
+                      <button
+                        onClick={() => handleSaveGrade(slot.slotId)}
+                        disabled={savingGrade === slot.slotId}
+                        className="rounded-lg bg-[#23415B] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#1a3048] disabled:opacity-50"
+                      >
+                        {savingGrade === slot.slotId ? <Loader2 className="h-3 w-3 animate-spin" /> : "OK"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             {[["Tutorías asignadas", stat.totalSlots], ["Estudiantes inscritos", stat.totalStudents], ["Capacidad total", stat.totalCapacity], ["Ocupación", `${pct}%`]].map(([label, value]) => (
@@ -708,9 +803,9 @@ function TutorDetailPanel({ stat, user, onClose, onRevoke, revoking, onDelete, d
           <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500 space-y-1.5">
             <p className="font-semibold text-slate-600 mb-1">Escala de evaluación</p>
             {[
-              { range: "≥ 83% ocupación", grade: "6.0–7.0", label: "Cumple", color: "bg-emerald-500" },
-              { range: "50–83% ocupación", grade: "4.0–5.9", label: "Regular", color: "bg-amber-400" },
-              { range: "< 50% ocupación", grade: "1.0–3.9", label: "Revisar", color: "bg-rose-500" },
+              { range: "Nota ≥ 6.0", grade: "6.0–7.0", label: "Cumple", color: "bg-emerald-500" },
+              { range: "Nota 4.0–5.9", grade: "4.0–5.9", label: "Regular", color: "bg-amber-400" },
+              { range: "Nota < 4.0", grade: "1.0–3.9", label: "Revisar", color: "bg-rose-500" },
             ].map((r) => (
               <div key={r.label} className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${r.color}`} />
@@ -770,6 +865,7 @@ export function AdminTutoresPage() {
   const [createTutor, { loading: creating }] = useMutation(CREATE_TUTOR, { refetchQueries: ["AdminTutoresAccess"] });
   const [deleteUserMutation, { loading: deleting }] = useMutation(DELETE_USER, { refetchQueries: ["AdminTutoresAccess"] });
   const [adminUpdateUserMutation, { loading: saving }] = useMutation(ADMIN_UPDATE_USER, { refetchQueries: ["AdminTutoresAccess"] });
+  const [setSlotGradeMutation] = useMutation(SET_SLOT_GRADE, { refetchQueries: ["AdminTutoresAccess"] });
 
   const users = useMemo(() => data?.usersAccess ?? [], [data?.usersAccess]);
   const stats = useMemo(() => data?.tutorStats ?? [], [data?.tutorStats]);
@@ -843,11 +939,16 @@ export function AdminTutoresPage() {
     } catch { showToast("err", "No se pudieron guardar los cambios."); }
   };
 
+  const handleSetSlotGrade = async (slotId: string, grade: number | null) => {
+    await setSlotGradeMutation({ variables: { slotId, grade } });
+    showToast("ok", grade === null ? "Nota eliminada." : `Nota ${grade.toFixed(1)} guardada.`);
+  };
+
   return (
     <>
       {confirmRevoke && <ConfirmRevokeModal user={confirmRevoke} onConfirm={() => handleRevoke()} onCancel={() => setConfirmRevoke(null)} loading={revoking} />}
       {showAddModal && <AddTutorModal onCreate={handleCreate} onClose={() => setShowAddModal(false)} creating={creating} careers={careers} />}
-      {selectedStat && <TutorDetailPanel stat={selectedStat} user={usersMap.get(selectedStat.email)} onClose={() => setSelectedStat(null)} onRevoke={() => handleRevoke(selectedStat.email)} revoking={revoking} onDelete={() => handleDelete(selectedStat.userId)} deleting={deleting} onSaveEdit={(data) => handleSaveEdit(selectedStat.userId, data)} saving={saving} careers={careers} />}
+      {selectedStat && <TutorDetailPanel stat={selectedStat} user={usersMap.get(selectedStat.email)} onClose={() => setSelectedStat(null)} onRevoke={() => handleRevoke(selectedStat.email)} revoking={revoking} onDelete={() => handleDelete(selectedStat.userId)} deleting={deleting} onSaveEdit={(data) => handleSaveEdit(selectedStat.userId, data)} saving={saving} careers={careers} onSetSlotGrade={handleSetSlotGrade} />}
 
       {toast && (
         <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg ${toast.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>

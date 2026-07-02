@@ -82,6 +82,15 @@ export interface TutorOptionView {
   email: string;
 }
 
+export interface TutorSlotGradeView {
+  slotId: string;
+  offeringName: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  adminGrade: number | null;
+}
+
 export interface TutorStatView {
   tutorId: string;
   userId: string;
@@ -93,4 +102,5 @@ export interface TutorStatView {
   totalCapacity: number;
   fillRate: number;
   grade: number;
+  slots: TutorSlotGradeView[];
 }

@@ -329,13 +329,29 @@ export class OfferingsRepository {
     return this.db.attendance.findMany({ where: { scheduleId } });
   }
 
+  async updateSlotGrade(id: string, grade: number | null): Promise<void> {
+    await this.db.tutoringSlot.update({
+      where: { id },
+      data: { adminGrade: grade },
+    });
+  }
+
   async findTutorStats(semester: string): Promise<
     Array<{
       id: string;
       userId: string;
       user: { firstName: string; lastName: string; email: string; avatarUrl: string | null };
       _count: { tutoringSlots: number };
-      tutoringSlots: Array<{ maxCapacity: number; _count: { enrollments: number } }>;
+      tutoringSlots: Array<{
+        id: string;
+        offering: { name: string };
+        dayOfWeek: string;
+        startTime: string;
+        endTime: string;
+        maxCapacity: number;
+        adminGrade: number | null;
+        _count: { enrollments: number };
+      }>;
     }>
   > {
     return this.db.tutor.findMany({
@@ -345,7 +361,16 @@ export class OfferingsRepository {
         _count: { select: { tutoringSlots: { where: { offering: { semester } } } } },
         tutoringSlots: {
           where: { offering: { semester } },
-          select: { maxCapacity: true, _count: { select: { enrollments: true } } },
+          select: {
+            id: true,
+            dayOfWeek: true,
+            startTime: true,
+            endTime: true,
+            maxCapacity: true,
+            adminGrade: true,
+            _count: { select: { enrollments: true } },
+            offering: { select: { name: true } },
+          },
         },
       },
       orderBy: { user: { firstName: "asc" } },

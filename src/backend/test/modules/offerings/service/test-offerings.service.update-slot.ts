@@ -76,6 +76,7 @@ function makeRepoMock(overrides: Record<string, unknown> = {}) {
     createSlot: async () => makeSlotRecord(),
     deleteSlot: async () => undefined,
     updateSlotGoogleLabel: async () => undefined,
+    updateSlotGrade: async () => undefined,
     createEnrollment: async () => ({}),
     findEnrollmentsBySlot: async () => [],
     countEnrollmentsBySlot: async () => 0,
@@ -336,4 +337,134 @@ test("OfferingsService.deleteGoogleFormLink retorna true y delega al repo", asyn
 
   assert.equal(result, true);
   assert.equal(deletedId, "link-1");
+});
+
+// ─── setSlotGrade ─────────────────────────────────────────────────────────────
+
+test("OfferingsService.setSlotGrade guarda la nota y retorna SlotView", async () => {
+  let savedGrade: number | null = undefined as never;
+  const repo = makeRepoMock({
+    updateSlotGrade: async (_id: string, g: number | null) => { savedGrade = g; },
+  });
+  const service = new OfferingsService(repo as never);
+
+  const result = await service.setSlotGrade("slot-1", 6.5);
+
+  assert.equal(savedGrade, 6.5);
+  assert.ok(result.id, "Debe retornar SlotView con id");
+});
+
+test("OfferingsService.setSlotGrade acepta null para borrar la nota", async () => {
+  let savedGrade: number | null = 5 as number | null;
+  const repo = makeRepoMock({
+    updateSlotGrade: async (_id: string, g: number | null) => { savedGrade = g; },
+  });
+  const service = new OfferingsService(repo as never);
+
+  await service.setSlotGrade("slot-1", null);
+  assert.equal(savedGrade, null);
+});
+
+test("OfferingsService.setSlotGrade lanza RESOURCE_NOT_FOUND si el slot no existe", async () => {
+  const repo = makeRepoMock({ findSlotById: async () => null });
+  const service = new OfferingsService(repo as never);
+
+  await assert.rejects(
+    () => service.setSlotGrade("no-existe", 5),
+    (err) => err instanceof AuthError && err.code === "RESOURCE_NOT_FOUND"
+  );
+});
+
+test("OfferingsService.setSlotGrade lanza INVALID_INPUT si la nota es menor a 1", async () => {
+  const service = new OfferingsService(makeRepoMock() as never);
+  await assert.rejects(
+    () => service.setSlotGrade("slot-1", 0.9),
+    (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
+  );
+});
+
+test("OfferingsService.setSlotGrade lanza INVALID_INPUT si la nota es mayor a 7", async () => {
+  const service = new OfferingsService(makeRepoMock() as never);
+  await assert.rejects(
+    () => service.setSlotGrade("slot-1", 7.1),
+    (err) => err instanceof AuthError && err.code === "INVALID_INPUT"
+  );
+});
+
+test("OfferingsService.setSlotGrade acepta nota en los extremos del rango (1.0 y 7.0)", async () => {
+  const service = new OfferingsService(makeRepoMock() as never);
+  await assert.doesNotReject(() => service.setSlotGrade("slot-1", 1.0));
+  await assert.doesNotReject(() => service.setSlotGrade("slot-1", 7.0));
+});
+
+// ─── getTutorStats — fórmula de nota ─────────────────────────────────────────
+
+function makeTutorStatRecord(slots: Array<{ adminGrade: number | null }>) {
+  return {
+    id: "tutor-1",
+    userId: "user-1",
+    user: { firstName: "Ana", lastName: "García", email: "ana@ucn.cl", avatarUrl: null },
+    _count: { tutoringSlots: slots.length },
+    tutoringSlots: slots.map((s, i) => ({
+      id: `slot-${i}`,
+      offering: { name: `Asignatura ${i}` },
+      dayOfWeek: "MONDAY",
+      startTime: "09:55",
+      endTime: "11:25",
+      maxCapacity: 30,
+      adminGrade: s.adminGrade,
+      _count: { enrollments: 10 },
+    })),
+  };
+}
+
+function makeSemestersMock() {
+  return { activeCode: async () => "2026-1", assertWritable: async () => undefined };
+}
+
+test("getTutorStats calcula nota promedio de slots con adminGrade asignada", async () => {
+  const repo = makeRepoMock({
+    findTutorStats: async () => [makeTutorStatRecord([{ adminGrade: 7 }, { adminGrade: 6 }])],
+  });
+  const service = new OfferingsService(repo as never, makeSemestersMock() as never);
+
+  const [stat] = await service.getTutorStats();
+
+  assert.equal(stat.grade, 6.5);
+});
+
+test("getTutorStats ignora slots sin nota al calcular el promedio", async () => {
+  const repo = makeRepoMock({
+    findTutorStats: async () => [makeTutorStatRecord([{ adminGrade: 6 }, { adminGrade: null }])],
+  });
+  const service = new OfferingsService(repo as never, makeSemestersMock() as never);
+
+  const [stat] = await service.getTutorStats();
+
+  // Solo 1 slot calificado con nota 6 → promedio 6.0
+  assert.equal(stat.grade, 6);
+});
+
+test("getTutorStats retorna grade 0 si ningún slot tiene nota asignada", async () => {
+  const repo = makeRepoMock({
+    findTutorStats: async () => [makeTutorStatRecord([{ adminGrade: null }, { adminGrade: null }])],
+  });
+  const service = new OfferingsService(repo as never, makeSemestersMock() as never);
+
+  const [stat] = await service.getTutorStats();
+
+  assert.equal(stat.grade, 0);
+});
+
+test("getTutorStats incluye slots con su offeringName y adminGrade", async () => {
+  const repo = makeRepoMock({
+    findTutorStats: async () => [makeTutorStatRecord([{ adminGrade: 5.5 }])],
+  });
+  const service = new OfferingsService(repo as never, makeSemestersMock() as never);
+
+  const [stat] = await service.getTutorStats();
+
+  assert.equal(stat.slots.length, 1);
+  assert.equal(stat.slots[0].adminGrade, 5.5);
+  assert.equal(stat.slots[0].offeringName, "Asignatura 0");
 });

@@ -147,6 +147,7 @@ model TutoringSlot {
   roomName              String?
   maxCapacity           Int              @default(30)
   googleFormOptionLabel String?
+  adminGrade            Float?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   enrollments           Enrollment[]

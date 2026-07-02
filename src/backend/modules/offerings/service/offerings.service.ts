@@ -343,13 +343,35 @@ export class OfferingsService {
     return tutors.map(toTutorOptionView);
   }
 
+  async setSlotGrade(slotId: string, grade: number | null): Promise<SlotView> {
+    const slot = await this.repo.findSlotById(slotId);
+    if (!slot) throw new AuthError("Slot not found", "RESOURCE_NOT_FOUND", 404);
+
+    if (grade !== null) {
+      if (typeof grade !== "number" || !isFinite(grade) || grade < 1 || grade > 7) {
+        throw new AuthError("grade must be a number between 1.0 and 7.0", "INVALID_INPUT", 400);
+      }
+    }
+
+    await this.repo.updateSlotGrade(slotId, grade);
+    const updated = await this.repo.findSlotById(slotId);
+    return toSlotView(updated!);
+  }
+
   async getTutorStats(): Promise<import("@/backend/modules/offerings/model/offering.model").TutorStatView[]> {
     const tutors = await this.repo.findTutorStats(await this.semesters.activeCode());
     return tutors.map((t) => {
       const totalStudents = t.tutoringSlots.reduce((s, sl) => s + sl._count.enrollments, 0);
       const totalCapacity = t.tutoringSlots.reduce((s, sl) => s + sl.maxCapacity, 0);
       const fillRate = totalCapacity > 0 ? totalStudents / totalCapacity : 0;
-      const grade = totalCapacity > 0 ? Math.max(1.0, Math.min(7.0, Math.round((fillRate * 6 + 1) * 10) / 10)) : 0;
+
+      // Grade: average of admin-assigned grades per slot. Falls back to 0 if none set.
+      const gradedSlots = t.tutoringSlots.filter((sl) => sl.adminGrade !== null);
+      const grade =
+        gradedSlots.length > 0
+          ? Math.round((gradedSlots.reduce((s, sl) => s + sl.adminGrade!, 0) / gradedSlots.length) * 10) / 10
+          : 0;
+
       return {
         tutorId: t.id,
         userId: t.userId,
@@ -361,6 +383,14 @@ export class OfferingsService {
         totalCapacity,
         fillRate,
         grade,
+        slots: t.tutoringSlots.map((sl) => ({
+          slotId: sl.id,
+          offeringName: sl.offering.name,
+          dayOfWeek: sl.dayOfWeek,
+          startTime: sl.startTime,
+          endTime: sl.endTime,
+          adminGrade: sl.adminGrade,
+        })),
       };
     });
   }
