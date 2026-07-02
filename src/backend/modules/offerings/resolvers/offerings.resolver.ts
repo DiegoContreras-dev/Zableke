@@ -138,6 +138,15 @@ export const offeringsTypeDefs = `
     roomName: String
   }
 
+  input UpdateSlotInput {
+    tutorId: String
+    dayOfWeek: String
+    startTime: String
+    endTime: String
+    roomName: String
+    maxCapacity: Int
+  }
+
   input CreateEnrollmentInput {
     slotId: ID!
     studentEmail: String!
@@ -169,6 +178,7 @@ export const offeringsTypeDefs = `
     deleteOffering(id: ID!): Boolean!
     addSlotToOffering(input: AddSlotInput!): TutoringSlot!
     removeSlot(slotId: ID!): Boolean!
+    updateSlot(slotId: ID!, input: UpdateSlotInput!): TutoringSlot!
     createEnrollment(input: CreateEnrollmentInput!): EnrollmentRecord!
     removeEnrollment(enrollmentId: ID!): Boolean!
     generateGoogleForm(semester: String, existingFormId: String, googleAccessToken: String): GoogleFormResult!
@@ -280,6 +290,15 @@ export const offeringsResolvers = {
     removeSlot: async (_: unknown, args: { slotId: string }, context: GraphQLContext) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
       return offeringsService.removeSlot(args.slotId);
+    },
+
+    updateSlot: async (
+      _: unknown,
+      args: { slotId: string; input: unknown },
+      context: GraphQLContext
+    ) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.updateSlot(args.slotId, args.input);
     },
 
     createEnrollment: async (

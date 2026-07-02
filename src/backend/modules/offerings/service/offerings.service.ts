@@ -3,9 +3,11 @@ import {
   parseCreateEnrollmentInput,
   parseCreateOfferingInput,
   parseCreateSlotInput,
+  parseUpdateSlotInput,
   parseDateOnly,
   parseUpdateOfferingInput,
   type CreateEnrollmentInput,
+  type UpdateSlotInput,
 } from "@/backend/modules/offerings/dto/offering.dto";
 import type {
   EnrollmentView,
@@ -260,6 +262,74 @@ export class OfferingsService {
     if (!slot) throw new AuthError("Slot not found", "RESOURCE_NOT_FOUND", 404);
     await this.repo.deleteSlot(slotId);
     return true;
+  }
+
+  async updateSlot(slotId: string, rawInput: unknown): Promise<SlotView> {
+    const slot = await this.repo.findSlotById(slotId);
+    if (!slot) throw new AuthError("Slot not found", "RESOURCE_NOT_FOUND", 404);
+
+    const input = parseUpdateSlotInput(rawInput);
+
+    // Validate new tutor if changing
+    if (input.tutorId) {
+      const tutor = await this.repo.findTutorById(input.tutorId);
+      if (!tutor || !tutor.isActive || !tutor.user.isActive) {
+        throw new AuthError("Tutor not found or inactive", "RESOURCE_NOT_FOUND", 404);
+      }
+    }
+
+    // Check conflicts only if schedule-related fields changed
+    const newTutorId = input.tutorId ?? slot.tutorId;
+    const newDayOfWeek = input.dayOfWeek ?? slot.dayOfWeek;
+    const newStartTime = input.startTime ?? slot.startTime;
+    const newEndTime = input.endTime ?? slot.endTime;
+    const newRoomName = input.roomName !== undefined ? (input.roomName ?? undefined) : (slot.roomName ?? undefined);
+
+    const [tutorConflict, roomConflict] = await Promise.all([
+      this.repo.findTutorSlotConflict({
+        tutorId: newTutorId,
+        semester: slot.offering.semester,
+        dayOfWeek: newDayOfWeek,
+        startTime: newStartTime,
+        endTime: newEndTime,
+        excludeId: slotId,
+      }),
+      newRoomName
+        ? this.repo.findRoomSlotConflict({
+            roomName: newRoomName,
+            semester: slot.offering.semester,
+            dayOfWeek: newDayOfWeek,
+            startTime: newStartTime,
+            endTime: newEndTime,
+            excludeId: slotId,
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (tutorConflict) {
+      throw new AuthError(
+        `El tutor ya tiene un horario asignado en ese bloque (conflicto: ${tutorConflict.id})`,
+        "TUTOR_SCHEDULE_CONFLICT",
+        409
+      );
+    }
+    if (roomConflict) {
+      throw new AuthError(
+        `La sala "${newRoomName}" ya está ocupada en ese bloque (conflicto: ${roomConflict.id})`,
+        "ROOM_SCHEDULE_CONFLICT",
+        409
+      );
+    }
+
+    const updated = await this.repo.updateSlot(slotId, {
+      tutorId: input.tutorId,
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      roomName: input.roomName,
+      maxCapacity: input.maxCapacity,
+    });
+    return toSlotView(updated);
   }
 
   async getSlotsByTutor(userId: string, semester?: string): Promise<SlotView[]> {

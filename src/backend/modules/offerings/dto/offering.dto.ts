@@ -147,6 +147,58 @@ export function parseCreateSlotInput(raw: unknown): CreateSlotInput {
   };
 }
 
+export interface UpdateSlotInput {
+  tutorId?: string;
+  dayOfWeek?: DayOfWeek;
+  startTime?: string;
+  endTime?: string;
+  roomName?: string | null;
+  maxCapacity?: number;
+}
+
+export function parseUpdateSlotInput(raw: unknown): UpdateSlotInput {
+  const obj = readObject(raw, "UpdateSlot input");
+  const result: UpdateSlotInput = {};
+
+  if (typeof obj.tutorId === "string") {
+    const v = obj.tutorId.trim();
+    if (!v) throw new AuthError("tutorId cannot be empty", "INVALID_INPUT", 400);
+    result.tutorId = v;
+  }
+
+  if (typeof obj.dayOfWeek === "string") {
+    const day = obj.dayOfWeek.toUpperCase();
+    if (!Object.values(DayOfWeek).includes(day as DayOfWeek)) {
+      throw new AuthError("dayOfWeek is invalid", "INVALID_INPUT", 400);
+    }
+    result.dayOfWeek = day as DayOfWeek;
+  }
+
+  if (obj.startTime !== undefined || obj.endTime !== undefined) {
+    const startTime = parseTime(obj.startTime, "startTime");
+    const endTime = parseTime(obj.endTime, "endTime");
+    if (endTime <= startTime) {
+      throw new AuthError("endTime must be after startTime", "INVALID_INPUT", 400);
+    }
+    result.startTime = startTime;
+    result.endTime = endTime;
+  }
+
+  if (obj.roomName !== undefined) {
+    result.roomName = typeof obj.roomName === "string" ? obj.roomName.trim() || null : null;
+  }
+
+  if (obj.maxCapacity !== undefined) {
+    const maxCapacity = typeof obj.maxCapacity === "number" ? obj.maxCapacity : Number(obj.maxCapacity);
+    if (!Number.isInteger(maxCapacity) || maxCapacity <= 0) {
+      throw new AuthError("maxCapacity must be a positive integer", "INVALID_INPUT", 400);
+    }
+    result.maxCapacity = maxCapacity;
+  }
+
+  return result;
+}
+
 export function parseCreateEnrollmentInput(raw: unknown): CreateEnrollmentInput {
   const obj = readObject(raw, "Enrollment input");
   const studentEmail = readRequiredString(obj, "studentEmail").toLowerCase();

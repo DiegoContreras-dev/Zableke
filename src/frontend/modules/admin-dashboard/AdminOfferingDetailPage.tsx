@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState, useEffect } from "react";
-import { AlertTriangle, Plus, RefreshCw, Trash2, UserPlus, ArrowLeft } from "lucide-react";
+import { AlertTriangle, Plus, RefreshCw, Trash2, UserPlus, ArrowLeft, Pencil } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
@@ -56,6 +56,23 @@ const ADD_SLOT = gql`
   mutation AddSlot($input: AddSlotInput!) {
     addSlotToOffering(input: $input) {
       id
+    }
+  }
+`;
+
+const UPDATE_SLOT = gql`
+  mutation UpdateSlot($slotId: ID!, $input: UpdateSlotInput!) {
+    updateSlot(slotId: $slotId, input: $input) {
+      id
+      tutorId
+      tutorName
+      tutorEmail
+      roomName
+      dayOfWeek
+      startTime
+      endTime
+      maxCapacity
+      enrolledCount
     }
   }
 `;
@@ -170,6 +187,15 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
   const [enrollmentFormOpen, setEnrollmentFormOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
+  const [editingSlot, setEditingSlot] = useState<Slot | null>(null);
+  const [editSlotForm, setEditSlotForm] = useState({
+    tutorId: "",
+    dayOfWeek: "MONDAY",
+    block: "A",
+    maxCapacity: 30,
+    roomName: "",
+  });
+  const [editSlotError, setEditSlotError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
@@ -206,6 +232,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
 
   const refetchDetail = () => [{ query: OFFERING_DETAIL, variables: { id: offeringId } }];
   const [addSlot, { loading: addingSlot }] = useMutation(ADD_SLOT, { refetchQueries: refetchDetail });
+  const [updateSlotMutation, { loading: updatingSlot }] = useMutation(UPDATE_SLOT, { refetchQueries: refetchDetail });
   const [removeSlot] = useMutation(REMOVE_SLOT, { refetchQueries: refetchDetail });
   const [deleteOffering, { loading: deletingOffering }] = useMutation(DELETE_OFFERING);
   const [createEnrollment, { loading: creatingEnrollment }] = useMutation(CREATE_ENROLLMENT, {
@@ -271,6 +298,56 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
         setSlotError(`⚠️ Conflicto de sala: ${gqlMsg}`);
       } else {
         setSlotError(gqlMsg ?? "No fue posible guardar el horario.");
+      }
+    }
+  };
+
+  const openEditSlot = (slot: Slot) => {
+    const matchedBlock = blockOptions.find(
+      (b) => b.startTime === slot.startTime && b.endTime === slot.endTime
+    );
+    setEditSlotForm({
+      tutorId: slot.tutorId,
+      dayOfWeek: slot.dayOfWeek,
+      block: matchedBlock?.label ?? "A",
+      maxCapacity: slot.maxCapacity,
+      roomName: slot.roomName ?? "",
+    });
+    setEditSlotError(null);
+    setEditingSlot(slot);
+  };
+
+  const handleUpdateSlot = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingSlot) return;
+    setEditSlotError(null);
+    const selectedBlock = blockByLabel(editSlotForm.block);
+    try {
+      await updateSlotMutation({
+        variables: {
+          slotId: editingSlot.id,
+          input: {
+            tutorId: editSlotForm.tutorId,
+            dayOfWeek: editSlotForm.dayOfWeek,
+            startTime: selectedBlock.startTime,
+            endTime: selectedBlock.endTime,
+            maxCapacity: Number(editSlotForm.maxCapacity),
+            roomName: editSlotForm.roomName || null,
+          },
+        },
+      });
+      setEditingSlot(null);
+      setMessage("Paralelo actualizado correctamente.");
+    } catch (err: unknown) {
+      const gqlMsg =
+        (err as { graphQLErrors?: { message: string }[] })?.graphQLErrors?.[0]?.message ??
+        (err instanceof Error ? err.message : null);
+      if (gqlMsg?.includes("TUTOR_SCHEDULE_CONFLICT") || gqlMsg?.toLowerCase().includes("tutor")) {
+        setEditSlotError(`⚠️ Conflicto de tutor: ${gqlMsg}`);
+      } else if (gqlMsg?.includes("ROOM_SCHEDULE_CONFLICT") || gqlMsg?.toLowerCase().includes("sala")) {
+        setEditSlotError(`⚠️ Conflicto de sala: ${gqlMsg}`);
+      } else {
+        setEditSlotError(gqlMsg ?? "No fue posible actualizar el paralelo.");
       }
     }
   };
@@ -430,6 +507,13 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
                               className={`mr-2 rounded-md border px-2.5 py-1 text-xs font-medium ${isSelected ? "border-sky-500 bg-sky-100 text-sky-800" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}
                             >
                               {isSelected ? "Visualizando" : "Ver Inscritos"}
+                            </button>
+                            <button
+                              onClick={() => openEditSlot(slot)}
+                              className="mr-2 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar
                             </button>
                             <button
                               onClick={() => removeSlot({ variables: { slotId: slot.id } })}
@@ -707,6 +791,105 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {editingSlot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <form onSubmit={handleUpdateSlot} className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
+            <h2 className="text-base font-semibold text-slate-900">Editar Paralelo</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {dayLabel[editingSlot.dayOfWeek] ?? editingSlot.dayOfWeek} · {labelForBlock(editingSlot.startTime, editingSlot.endTime)} · {editingSlot.tutorName}
+            </p>
+            {editSlotError && (
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{editSlotError}</p>
+              </div>
+            )}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="text-sm font-medium text-slate-700 sm:col-span-2">
+                Tutor
+                <select
+                  required
+                  value={editSlotForm.tutorId}
+                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, tutorId: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Seleccionar tutor</option>
+                  {tutors.map((t) => (
+                    <option key={t.tutorId} value={t.tutorId}>{t.name} · {t.email}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Día
+                <select
+                  value={editSlotForm.dayOfWeek}
+                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, dayOfWeek: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {dayOptions.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Bloque
+                <select
+                  value={editSlotForm.block}
+                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, block: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {blockOptions.map((b) => (
+                    <option key={b.label} value={b.label}>
+                      Bloque {b.label} · {b.startTime}–{b.endTime}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Sala
+                <input
+                  value={editSlotForm.roomName}
+                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, roomName: e.target.value }))}
+                  placeholder="207"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="text-sm font-medium text-slate-700 sm:col-span-2">
+                Cupo máximo
+                <input
+                  type="number"
+                  min={editingSlot.enrolledCount > 0 ? editingSlot.enrolledCount : 1}
+                  value={editSlotForm.maxCapacity}
+                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, maxCapacity: Number(e.target.value) }))}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+                {editingSlot.enrolledCount > 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    ⚠️ Hay {editingSlot.enrolledCount} estudiante(s) ya inscritos. El cupo mínimo es {editingSlot.enrolledCount}.
+                  </p>
+                )}
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setEditingSlot(null); setEditSlotError(null); }}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={updatingSlot}
+                className="inline-flex items-center gap-2 rounded-md bg-[#23415B] px-4 py-2 text-sm font-medium text-white hover:bg-[#1a3146] disabled:opacity-60"
+              >
+                {updatingSlot && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                Guardar cambios
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

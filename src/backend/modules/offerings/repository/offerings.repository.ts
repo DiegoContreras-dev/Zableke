@@ -106,6 +106,24 @@ export class OfferingsRepository {
     });
   }
 
+  async updateSlot(
+    id: string,
+    data: Partial<{
+      tutorId: string;
+      dayOfWeek: import("@prisma/client").DayOfWeek;
+      startTime: string;
+      endTime: string;
+      roomName: string | null;
+      maxCapacity: number;
+    }>
+  ): Promise<SlotRecord> {
+    return this.db.tutoringSlot.update({
+      where: { id },
+      data,
+      include: this.slotInclude(),
+    });
+  }
+
   async deleteSlot(id: string): Promise<void> {
     await this.db.tutoringSlot.delete({ where: { id } });
   }
