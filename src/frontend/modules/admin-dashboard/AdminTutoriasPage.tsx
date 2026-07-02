@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardList, ExternalLink, LoaderCircle, Plus, Search, BookOpen, Clock, Users, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -51,13 +51,81 @@ const ADD_SLOT = gql`
 `;
 
 const GENERATE_FORM = gql`
-  mutation GenerateGlobalForm($semester: String, $existingFormId: String) {
-    generateGoogleForm(semester: $semester, existingFormId: $existingFormId) {
+  mutation GenerateGlobalForm($semester: String, $existingFormId: String, $googleAccessToken: String) {
+    generateGoogleForm(semester: $semester, existingFormId: $existingFormId, googleAccessToken: $googleAccessToken) {
       formUrl
       formEditUrl
     }
   }
 `;
+
+// Google Identity Services no está tipado globalmente; se usa un tipo local
+// acotado en vez de aumentar `Window` para no chocar con la declaración de
+// login/App.tsx (que solo cubre `accounts.id`, no `accounts.oauth2`).
+type GoogleOAuthWindow = Window & {
+  google?: {
+    accounts?: {
+      oauth2?: {
+        initTokenClient(config: {
+          client_id: string;
+          scope: string;
+          callback: (response: { access_token?: string; error?: string }) => void;
+        }): { requestAccessToken: (opts?: { prompt?: string }) => void };
+      };
+    };
+  };
+};
+
+const GOOGLE_FORMS_SCOPE =
+  "https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/drive.file";
+
+function loadGoogleIdentityScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as GoogleOAuthWindow).google?.accounts?.oauth2) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById("google-identity-services");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("No se pudo cargar Google Identity Services")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "google-identity-services";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("No se pudo cargar Google Identity Services"));
+    document.head.appendChild(script);
+  });
+}
+
+function requestGoogleFormsAccessToken(clientId: string): Promise<string> {
+  return loadGoogleIdentityScript().then(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const oauth2 = (window as GoogleOAuthWindow).google?.accounts?.oauth2;
+        if (!oauth2) {
+          reject(new Error("Google Identity Services no está disponible"));
+          return;
+        }
+        const tokenClient = oauth2.initTokenClient({
+          client_id: clientId,
+          scope: GOOGLE_FORMS_SCOPE,
+          callback: (response) => {
+            if (response.error || !response.access_token) {
+              reject(new Error("No se otorgó permiso de Google para crear el formulario"));
+              return;
+            }
+            resolve(response.access_token);
+          },
+        });
+        tokenClient.requestAccessToken({ prompt: "consent" });
+      })
+  );
+}
 
 const SYNC_FORM = gql`
   mutation SyncForm($semester: String) {
@@ -142,6 +210,16 @@ export function AdminTutoriasPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [generatedForm, setGeneratedForm] = useState<{ formUrl: string; formEditUrl: string } | null>(null);
+  const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((res) => res.json())
+      .then((cfg: { googleClientId: string | null }) => {
+        if (cfg.googleClientId) setGoogleClientId(cfg.googleClientId);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const { data, loading, error } = useQuery<{
     offerings: OfferingRow[];
@@ -235,7 +313,12 @@ export function AdminTutoriasPage() {
     setErrorMessage(null);
     setFormMessage(null);
     try {
-      const result = await generateForm({ variables: { semester } });
+      if (!googleClientId) {
+        setErrorMessage("Google Client ID no está configurado en el servidor.");
+        return;
+      }
+      const googleAccessToken = await requestGoogleFormsAccessToken(googleClientId);
+      const result = await generateForm({ variables: { semester, googleAccessToken } });
       const urls = (result.data as { generateGoogleForm?: { formUrl?: string; formEditUrl?: string } } | undefined)?.generateGoogleForm;
       if (urls?.formUrl && urls?.formEditUrl) {
         setGeneratedForm({ formUrl: urls.formUrl, formEditUrl: urls.formEditUrl });

@@ -25,7 +25,11 @@ import {
 } from "@/backend/modules/offerings/repository/offerings.repository";
 import type { CurrentUserLike } from "@/backend/common/guards/role.guard";
 
-import { ServiceAccountFormsClient } from "@/backend/modules/offerings/google-forms/forms-client";
+import {
+  ServiceAccountFormsClient,
+  createFormWithUserToken,
+  shareFormWithServiceAccount,
+} from "@/backend/modules/offerings/google-forms/forms-client";
 import { syncResponses } from "@/backend/modules/offerings/google-forms/response-sync";
 import { DriveService } from "@/backend/modules/drive/drive-service";
 import { SemestersService } from "@/backend/modules/semesters/service/semesters.service";
@@ -371,7 +375,11 @@ export class OfferingsService {
     };
   }
 
-  async generateGoogleForm(semester?: string, existingFormId?: string): Promise<GoogleFormLinkView> {
+  async generateGoogleForm(
+    semester?: string,
+    existingFormId?: string,
+    googleAccessToken?: string
+  ): Promise<GoogleFormLinkView> {
     const targetSemester = semester ?? await this.semesters.activeCode();
     await this.semesters.assertWritable(targetSemester);
     const offerings = await this.repo.findOfferingsBySemester(targetSemester);
@@ -382,11 +390,21 @@ export class OfferingsService {
 
     const client = new ServiceAccountFormsClient();
 
-    // If no existing form was provided, create a new one automatically
+    // If no existing form was provided, create a new one using the requesting admin's own
+    // Google account (service accounts have no Drive of their own and can't create forms).
     let resolvedFormId = existingFormId?.trim();
     if (!resolvedFormId) {
-      const created = await client.createForm(`Tutoría ${targetSemester}`);
+      if (!googleAccessToken) {
+        throw new AuthError(
+          "Se requiere autorización de tu cuenta de Google (con Drive) para crear un formulario nuevo",
+          "GOOGLE_AUTHORIZATION_REQUIRED",
+          401
+        );
+      }
+      const created = await createFormWithUserToken(`Tutoría ${targetSemester}`, googleAccessToken);
       resolvedFormId = created.formId;
+      // Grant the service account access so it can keep managing/syncing the form afterward.
+      await shareFormWithServiceAccount(resolvedFormId, googleAccessToken);
     }
 
     // Remember initial items so we can clean them up after inserting ours

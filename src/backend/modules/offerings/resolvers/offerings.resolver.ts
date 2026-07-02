@@ -159,7 +159,7 @@ export const offeringsTypeDefs = `
     removeSlot(slotId: ID!): Boolean!
     createEnrollment(input: CreateEnrollmentInput!): EnrollmentRecord!
     removeEnrollment(enrollmentId: ID!): Boolean!
-    generateGoogleForm(semester: String, existingFormId: String): GoogleFormResult!
+    generateGoogleForm(semester: String, existingFormId: String, googleAccessToken: String): GoogleFormResult!
     syncFormResponses(semester: String): SyncResult!
   }
 `;
@@ -280,11 +280,11 @@ export const offeringsResolvers = {
 
     generateGoogleForm: async (
       _: unknown,
-      args: { semester?: string; existingFormId?: string },
+      args: { semester?: string; existingFormId?: string; googleAccessToken?: string },
       context: GraphQLContext
     ) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
-      return offeringsService.generateGoogleForm(args.semester, args.existingFormId);
+      return offeringsService.generateGoogleForm(args.semester, args.existingFormId, args.googleAccessToken);
     },
 
     syncFormResponses: async (

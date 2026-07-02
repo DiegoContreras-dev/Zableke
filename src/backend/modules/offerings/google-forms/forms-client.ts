@@ -33,6 +33,50 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
+export async function createFormWithUserToken(
+  title: string,
+  userAccessToken: string
+): Promise<GoogleFormCreateResult> {
+  const response = await fetch(FORMS_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${userAccessToken}`,
+    },
+    body: JSON.stringify({ info: { title } }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new AuthError(`Google Forms API error (${response.status}): ${errorText}`, "GOOGLE_VERIFY_ERROR", 502);
+  }
+
+  const json = (await response.json()) as Record<string, unknown>;
+  const formId = typeof json.formId === "string" ? json.formId : "";
+  if (!formId) throw new AuthError("Google did not return a formId", "GOOGLE_VERIFY_ERROR", 502);
+
+  return {
+    formId,
+    formUrl: `https://docs.google.com/forms/d/${formId}/viewform`,
+    formEditUrl: `https://docs.google.com/forms/d/${formId}/edit`,
+  };
+}
+
+export async function shareFormWithServiceAccount(formId: string, userAccessToken: string): Promise<void> {
+  const serviceAccountEmail = getRequiredEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL");
+  const response = await fetch(`${DRIVE_URL}/${formId}/permissions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${userAccessToken}`,
+    },
+    body: JSON.stringify({ type: "user", role: "writer", emailAddress: serviceAccountEmail }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new AuthError(`Google Drive API error (${response.status}): ${errorText}`, "GOOGLE_VERIFY_ERROR", 502);
+  }
+}
+
 export class ServiceAccountFormsClient implements GoogleFormsClient {
   private accessToken: string | null = null;
   private expiresAt = 0;
