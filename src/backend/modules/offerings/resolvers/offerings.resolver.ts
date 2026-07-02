@@ -53,6 +53,17 @@ export const offeringsTypeDefs = `
     formEditUrl: String
   }
 
+  type GoogleFormLinkRecord {
+    id: ID!
+    semester: String!
+    formId: String!
+    formUrl: String!
+    formEditUrl: String
+    lastSyncedAt: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
   type SyncResult {
     newEnrollments: Int!
     skipped: Int!
@@ -148,6 +159,7 @@ export const offeringsTypeDefs = `
     tutorStats: [TutorPerformanceStat!]!
     reportStats(semester: String): ReportStats!
     allEnrollments(semester: String): [EnrollmentRecord!]!
+    googleFormLinks: [GoogleFormLinkRecord!]!
   }
 
   extend type Mutation {
@@ -161,6 +173,7 @@ export const offeringsTypeDefs = `
     removeEnrollment(enrollmentId: ID!): Boolean!
     generateGoogleForm(semester: String, existingFormId: String, googleAccessToken: String): GoogleFormResult!
     syncFormResponses(semester: String): SyncResult!
+    deleteGoogleFormLink(id: ID!): Boolean!
   }
 `;
 
@@ -218,6 +231,11 @@ export const offeringsResolvers = {
     allEnrollments: async (_: unknown, args: { semester?: string }, context: GraphQLContext) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
       return offeringsService.getAllEnrollments(args.semester);
+    },
+
+    googleFormLinks: async (_: unknown, __: unknown, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.getGoogleFormLinks();
     },
   },
 
@@ -294,6 +312,11 @@ export const offeringsResolvers = {
     ) => {
       requirePermission(context.currentUser, "MANAGE_OFFERINGS");
       return offeringsService.syncGoogleFormResponses(args.semester);
+    },
+
+    deleteGoogleFormLink: async (_: unknown, args: { id: string }, context: GraphQLContext) => {
+      requirePermission(context.currentUser, "MANAGE_OFFERINGS");
+      return offeringsService.deleteGoogleFormLink(args.id);
     },
   },
 };

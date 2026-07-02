@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardList, ExternalLink, LoaderCircle, Plus, Search, BookOpen, Clock, Users, RefreshCw } from "lucide-react";
+import { AlertTriangle, ClipboardList, ExternalLink, LoaderCircle, Plus, Search, BookOpen, Clock, Users, RefreshCw, FileText, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
@@ -137,6 +137,26 @@ const SYNC_FORM = gql`
   }
 `;
 
+const GOOGLE_FORM_LINKS = gql`
+  query GoogleFormLinks {
+    googleFormLinks {
+      id
+      semester
+      formId
+      formUrl
+      formEditUrl
+      lastSyncedAt
+      createdAt
+    }
+  }
+`;
+
+const DELETE_FORM_LINK = gql`
+  mutation DeleteGoogleFormLink($id: ID!) {
+    deleteGoogleFormLink(id: $id)
+  }
+`;
+
 interface OfferingRow {
   id: string;
   name: string;
@@ -157,6 +177,16 @@ interface CareerOption {
   name: string;
   schoolName: string;
   color: string | null;
+}
+
+interface GoogleFormLinkRow {
+  id: string;
+  semester: string;
+  formId: string;
+  formUrl: string;
+  formEditUrl: string | null;
+  lastSyncedAt: string | null;
+  createdAt: string;
 }
 
 function currentSemester(): string {
@@ -198,6 +228,7 @@ export function AdminTutoriasPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isManagingCareers, setIsManagingCareers] = useState(false);
+  const [isViewingForms, setIsViewingForms] = useState(false);
   const [name, setName] = useState("");
   const [initialSlot, setInitialSlot] = useState({
     tutorId: "",
@@ -236,6 +267,16 @@ export function AdminTutoriasPage() {
   const [generateForm, { loading: generatingForm }] = useMutation(GENERATE_FORM);
   const [syncForm, { loading: syncingForm }] = useMutation(SYNC_FORM, {
     refetchQueries: ["AdminOfferings"],
+  });
+
+  const { data: formLinksData, loading: loadingFormLinks, refetch: refetchFormLinks } = useQuery<{
+    googleFormLinks: GoogleFormLinkRow[];
+  }>(GOOGLE_FORM_LINKS, {
+    fetchPolicy: "cache-and-network",
+    skip: !isViewingForms,
+  });
+  const [deleteFormLink, { loading: deletingFormLink }] = useMutation(DELETE_FORM_LINK, {
+    refetchQueries: ["GoogleFormLinks"],
   });
 
   const offerings = useMemo(() => data?.offerings ?? [], [data?.offerings]);
@@ -420,6 +461,13 @@ export function AdminTutoriasPage() {
           >
             {generatingForm ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
             Generar Form
+          </button>
+          <button
+            onClick={() => { setIsViewingForms(true); refetchFormLinks(); }}
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <FileText className="h-4 w-4" />
+            Ver Forms
           </button>
           <button
             onClick={() => setIsManagingCareers(true)}
@@ -745,6 +793,109 @@ export function AdminTutoriasPage() {
         </div>
       )}
       {isManagingCareers && <CareersManagerModal onClose={() => setIsManagingCareers(false)} />}
+
+      {isViewingForms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+              <div className="rounded-full bg-sky-100 p-2">
+                <FileText className="h-4 w-4 text-sky-600" />
+              </div>
+              <h2 className="flex-1 text-base font-semibold text-slate-900">Formularios Google activos</h2>
+              <button
+                onClick={() => setIsViewingForms(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+              {loadingFormLinks ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+                  ))}
+                </div>
+              ) : !formLinksData?.googleFormLinks?.length ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <FileText className="mb-3 h-10 w-10 text-slate-300" />
+                  <p className="text-sm font-medium text-slate-500">No hay formularios creados todavía.</p>
+                  <p className="mt-1 text-xs text-slate-400">Usa el botón «Generar Form» para crear uno.</p>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {formLinksData.googleFormLinks.map((link) => (
+                    <li
+                      key={link.id}
+                      className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900">Semestre {link.semester}</p>
+                        {link.lastSyncedAt ? (
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            Última sync: {new Date(link.lastSyncedAt).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" })}
+                          </p>
+                        ) : (
+                          <p className="mt-0.5 text-xs text-slate-400">Sin sincronización aún</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {link.formEditUrl && (
+                          <a
+                            href={link.formEditUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Editar formulario"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Editar
+                          </a>
+                        )}
+                        <a
+                          href={link.formUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Ver formulario"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Ver
+                        </a>
+                        <button
+                          disabled={deletingFormLink}
+                          onClick={async () => {
+                            if (!confirm(`¿Eliminar el form del semestre ${link.semester} de la base de datos?\n\nEsto no borra el formulario en Google Drive, solo elimina el registro en Zableke.`)) return;
+                            try {
+                              await deleteFormLink({ variables: { id: link.id } });
+                            } catch {
+                              alert("Error al eliminar el form link.");
+                            }
+                          }}
+                          title="Eliminar registro"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          {deletingFormLink ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-100 px-5 py-3">
+              <p className="text-xs text-slate-400">
+                ⚠️ Eliminar un registro aquí no borra el formulario en Google Drive. Solo desvincula el semestre de Zableke.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

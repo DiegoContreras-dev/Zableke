@@ -237,7 +237,11 @@ function TutorGrid({
             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#23415B]/10 text-sm font-bold text-[#23415B]">
               {tutor.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={tutor.avatarUrl} alt={tutor.name} className="h-full w-full object-cover" />
+                <img
+                  src={`/api/profile/avatar?userId=${encodeURIComponent(tutor.userId)}`}
+                  alt={tutor.name}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 initials(tutor.name)
               )}

@@ -46,6 +46,17 @@ export interface GoogleFormLinkView {
   formEditUrl: string | null;
 }
 
+export interface GoogleFormLinkFullView {
+  id: string;
+  semester: string;
+  formId: string;
+  formUrl: string;
+  formEditUrl: string | null;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncResultView {
   newEnrollments: number;
   skipped: number;

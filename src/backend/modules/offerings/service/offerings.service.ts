@@ -9,6 +9,7 @@ import {
 } from "@/backend/modules/offerings/dto/offering.dto";
 import type {
   EnrollmentView,
+  GoogleFormLinkFullView,
   GoogleFormLinkView,
   OfferingView,
   SlotAttendanceView,
@@ -515,6 +516,25 @@ export class OfferingsService {
       client: new ServiceAccountFormsClient(),
       repo: this.repo,
     });
+  }
+
+  async getGoogleFormLinks(): Promise<GoogleFormLinkFullView[]> {
+    const links = await this.repo.findAllGoogleFormLinks();
+    return links.map((link) => ({
+      id: link.id,
+      semester: link.semester,
+      formId: link.formId,
+      formUrl: link.formUrl,
+      formEditUrl: link.formEditUrl ?? null,
+      lastSyncedAt: link.lastSyncedAt ? link.lastSyncedAt.toISOString() : null,
+      createdAt: link.createdAt.toISOString(),
+      updatedAt: link.updatedAt.toISOString(),
+    }));
+  }
+
+  async deleteGoogleFormLink(id: string): Promise<boolean> {
+    await this.repo.deleteGoogleFormLink(id);
+    return true;
   }
 
   async getReportStats(semester?: string) {

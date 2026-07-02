@@ -254,6 +254,16 @@ export class OfferingsRepository {
     return this.db.googleFormLink.findUnique({ where: { semester } });
   }
 
+  async findAllGoogleFormLinks() {
+    return this.db.googleFormLink.findMany({
+      orderBy: { semester: "desc" },
+    });
+  }
+
+  async deleteGoogleFormLink(id: string): Promise<void> {
+    await this.db.googleFormLink.delete({ where: { id } });
+  }
+
   async markGoogleFormSynced(semester: string): Promise<void> {
     await this.db.googleFormLink.update({
       where: { semester },
