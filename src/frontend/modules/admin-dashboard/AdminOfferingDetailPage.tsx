@@ -192,7 +192,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
     tutorId: "",
     dayOfWeek: "MONDAY",
     block: "A",
-    maxCapacity: 30,
+    maxCapacity: "",
     roomName: "",
   });
   const [editSlotError, setEditSlotError] = useState<string | null>(null);
@@ -203,7 +203,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
     tutorId: "",
     dayOfWeek: "MONDAY",
     block: "A",
-    maxCapacity: 30,
+    maxCapacity: "",
     roomName: "",
   });
   const [enrollmentForm, setEnrollmentForm] = useState({
@@ -272,6 +272,11 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
     event.preventDefault();
     setMessage(null);
     setSlotError(null);
+    const parsedCapacity = Number(slotForm.maxCapacity);
+    if (!slotForm.maxCapacity || !Number.isInteger(parsedCapacity) || parsedCapacity < 1) {
+      setSlotError("El cupo máximo debe ser un número entero mayor a 0.");
+      return;
+    }
     const selectedBlock = blockByLabel(slotForm.block);
     try {
       await addSlot({
@@ -282,7 +287,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
             dayOfWeek: slotForm.dayOfWeek,
             startTime: selectedBlock.startTime,
             endTime: selectedBlock.endTime,
-            maxCapacity: Number(slotForm.maxCapacity),
+            maxCapacity: parsedCapacity,
             roomName: slotForm.roomName || null,
           },
         },
@@ -310,7 +315,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
       tutorId: slot.tutorId,
       dayOfWeek: slot.dayOfWeek,
       block: matchedBlock?.label ?? "A",
-      maxCapacity: slot.maxCapacity,
+      maxCapacity: String(slot.maxCapacity),
       roomName: slot.roomName ?? "",
     });
     setEditSlotError(null);
@@ -321,6 +326,15 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
     event.preventDefault();
     if (!editingSlot) return;
     setEditSlotError(null);
+    const parsedCapacity = Number(editSlotForm.maxCapacity);
+    if (!editSlotForm.maxCapacity || !Number.isInteger(parsedCapacity) || parsedCapacity < 1) {
+      setEditSlotError("El cupo máximo debe ser un número entero mayor a 0.");
+      return;
+    }
+    if (parsedCapacity < editingSlot.enrolledCount) {
+      setEditSlotError(`El cupo no puede ser menor a los inscritos actuales (${editingSlot.enrolledCount}).`);
+      return;
+    }
     const selectedBlock = blockByLabel(editSlotForm.block);
     try {
       await updateSlotMutation({
@@ -331,7 +345,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
             dayOfWeek: editSlotForm.dayOfWeek,
             startTime: selectedBlock.startTime,
             endTime: selectedBlock.endTime,
-            maxCapacity: Number(editSlotForm.maxCapacity),
+            maxCapacity: parsedCapacity,
             roomName: editSlotForm.roomName || null,
           },
         },
@@ -731,7 +745,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
               </label>
               <label className="text-sm font-medium text-slate-700">
                 Cupo
-                <input type="number" min={1} value={slotForm.maxCapacity} onChange={(event) => setSlotForm((prev) => ({ ...prev, maxCapacity: Number(event.target.value) }))} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <input type="number" min={1} placeholder="Ej: 30" value={slotForm.maxCapacity} onChange={(event) => setSlotForm((prev) => ({ ...prev, maxCapacity: event.target.value }))} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
               </label>
             </div>
             <div className="mt-5 flex justify-end gap-2">
@@ -863,7 +877,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
                   type="number"
                   min={editingSlot.enrolledCount > 0 ? editingSlot.enrolledCount : 1}
                   value={editSlotForm.maxCapacity}
-                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, maxCapacity: Number(e.target.value) }))}
+                  onChange={(e) => setEditSlotForm((prev) => ({ ...prev, maxCapacity: e.target.value }))}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 />
                 {editingSlot.enrolledCount > 0 && (

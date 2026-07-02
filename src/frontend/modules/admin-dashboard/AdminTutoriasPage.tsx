@@ -234,7 +234,7 @@ export function AdminTutoriasPage() {
     tutorId: "",
     dayOfWeek: "MONDAY",
     block: "A",
-    maxCapacity: 30,
+    maxCapacity: "",
     roomName: "",
   });
   const [targetCareers, setTargetCareers] = useState<string[]>([]);
@@ -311,6 +311,11 @@ export function AdminTutoriasPage() {
       setErrorMessage("Debes seleccionar al menos una carrera objetivo para la tutoría.");
       return;
     }
+    const parsedCapacity = Number(initialSlot.maxCapacity);
+    if (!initialSlot.maxCapacity || !Number.isInteger(parsedCapacity) || parsedCapacity < 1) {
+      setErrorMessage("El cupo máximo debe ser un número entero mayor a 0.");
+      return;
+    }
     const selectedBlock = blockByLabel(initialSlot.block);
     try {
       const result = await createOffering({ variables: { input: { name: name.trim(), semester, targetCareers } } });
@@ -327,13 +332,14 @@ export function AdminTutoriasPage() {
             dayOfWeek: initialSlot.dayOfWeek,
             startTime: selectedBlock.startTime,
             endTime: selectedBlock.endTime,
-            maxCapacity: Number(initialSlot.maxCapacity),
+            maxCapacity: parsedCapacity,
             roomName: initialSlot.roomName || null,
           },
         },
       });
       setName("");
       setTargetCareers([]);
+      setInitialSlot((prev) => ({ ...prev, maxCapacity: "", tutorId: "", roomName: "" }));
       setIsCreating(false);
       router.push(`/admin/tutorias/${offeringId}`);
     } catch (err: unknown) {
@@ -733,8 +739,9 @@ export function AdminTutoriasPage() {
                 <input
                   type="number"
                   min={1}
+                  placeholder="Ej: 30"
                   value={initialSlot.maxCapacity}
-                  onChange={(event) => setInitialSlot((prev) => ({ ...prev, maxCapacity: Number(event.target.value) }))}
+                  onChange={(event) => setInitialSlot((prev) => ({ ...prev, maxCapacity: event.target.value }))}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 />
               </label>
