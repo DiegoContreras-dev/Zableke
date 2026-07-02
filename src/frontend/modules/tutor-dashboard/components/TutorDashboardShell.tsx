@@ -23,6 +23,8 @@ import {
 } from "@/frontend/modules/auth/services/session";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { profileAvatarSrc } from "@/frontend/lib/profile-avatar";
+import { getApolloClient } from "@/frontend/lib/apollo-client";
 
 const TUTOR_SHELL_ME = gql`
   query TutorShellMe {
@@ -66,12 +68,10 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
       lastName: string;
       avatarUrl: string | null;
     };
-  }>(TUTOR_SHELL_ME, { fetchPolicy: "cache-and-network" });
+  }>(TUTOR_SHELL_ME, { fetchPolicy: "network-only" });
   const me = meData?.me;
   const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(" ") || "Tutor";
-  const avatarUrl = me?.avatarUrl
-    ? `${me.avatarUrl}?v=${avatarVersion}`
-    : null;
+  const avatarUrl = profileAvatarSrc(me?.avatarUrl, me?.id, avatarVersion);
 
   // Resolve session on client after hydration to avoid SSR/client mismatch.
   useEffect(() => {
@@ -137,6 +137,7 @@ export function TutorDashboardShell({ children }: TutorDashboardShellProps) {
 
   const handleLogout = () => {
     clearTutorSession();
+    void getApolloClient().clearStore();
     setHasActiveSession(false);
     setIsProfileDropdownOpen(false);
     setIsMobileMenuOpen(false);

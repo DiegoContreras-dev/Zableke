@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
     return new Response(Buffer.concat(chunks), {
       headers: {
         "Content-Type": metadata.metaData?.["content-type"] ?? "image/jpeg",
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": "private, no-store, max-age=0",
+        "Vary": "Cookie, Authorization",
       },
     });
   } catch {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     { "Content-Type": file.type },
   );
 
-  const avatarUrl = "/api/profile/avatar";
+  const avatarUrl = `/api/profile/avatar?userId=${encodeURIComponent(user.id)}`;
   await prisma.user.update({
     where: { id: user.id },
     data: { avatarUrl },

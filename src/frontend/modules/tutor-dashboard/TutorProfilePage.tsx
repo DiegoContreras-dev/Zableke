@@ -5,6 +5,7 @@ import { User, Mail, ShieldCheck, MapPin, Briefcase, Camera, Loader2, Save, Aler
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { getSessionToken } from "@/frontend/modules/auth/services/session";
+import { profileAvatarSrc } from "@/frontend/lib/profile-avatar";
 import { buildProfileFormData } from "@/frontend/modules/tutor-dashboard/lib/profile-form";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
       career: string | null;
       roles: string[];
     };
-  }>(ME_QUERY, { fetchPolicy: "cache-and-network" });
+  }>(ME_QUERY, { fetchPolicy: "network-only" });
 
   const [updateMyProfile] = useMutation(UPDATE_PROFILE);
 
@@ -116,8 +117,8 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
   }, []);
 
   useEffect(() => {
-    if (me?.avatarUrl) setAvatarUrl(me.avatarUrl);
-  }, [me?.avatarUrl]);
+    setAvatarUrl(profileAvatarSrc(me?.avatarUrl, me?.id));
+  }, [me?.avatarUrl, me?.id]);
 
   const phoneRegex = /^\+?[0-9\s\-]{8,15}$/;
   const isPhoneValid = !formData.phone || phoneRegex.test(formData.phone);
@@ -172,7 +173,7 @@ export function TutorProfilePage({ variant = "tutor" }: { variant?: "tutor" | "a
       if (!response.ok) throw new Error("Avatar upload failed");
 
       const result = (await response.json()) as { avatarUrl: string };
-      const nextAvatarUrl = `${result.avatarUrl}?v=${Date.now()}`;
+      const nextAvatarUrl = profileAvatarSrc(result.avatarUrl, me?.id, Date.now());
       await refetchMe();
       setAvatarUrl(nextAvatarUrl);
       window.dispatchEvent(new Event("tutor_avatar_updated"));

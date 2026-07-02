@@ -1,4 +1,24 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: zableke-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-zableke}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zableke_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-zableke}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/scripts/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
   nginx:
     image: nginx:alpine
     container_name: zableke-nginx
@@ -33,6 +53,8 @@ services:
     image: minio/mc:latest
     container_name: zableke-minio-init
     depends_on:
+      db:
+        condition: service_healthy
       minio:
         condition: service_healthy
     volumes:
@@ -86,10 +108,20 @@ services:
       - sh
       - -c
       - |
-        export DATABASE_URL="$$(printf '%s' "$$DATABASE_URL" | sed 's/@localhost:/@host.docker.internal:/')"
+        set -e
+        export DATABASE_URL="$$(printf '%s' "$$DATABASE_URL" | sed 's/@localhost:/@db:/')"
         echo "========================================"
-        echo "Sincronizando esquema con la BD..."
-        node db-sync.cjs
+        echo "Esperando y sincronizando esquema con la BD..."
+        attempt=1
+        until node db-sync.cjs; do
+          if [ "$$attempt" -ge 10 ]; then
+            echo "No fue posible conectar con PostgreSQL tras 10 intentos."
+            exit 1
+          fi
+          echo "PostgreSQL no disponible. Reintento $$attempt/10 en 3 segundos..."
+          attempt=$$((attempt + 1))
+          sleep 3
+        done
         echo "Zableke app iniciada"
         echo "Login:    http://localhost:3000/login"
         echo "GraphQL:  http://localhost:3000/api/graphql"
@@ -97,6 +129,8 @@ services:
         exec node server.js
 
 volumes:
+  postgres_data:
+    name: zableke_postgres_data
   minio_data:
 
 networks:

@@ -43,6 +43,9 @@ const STATEMENTS = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "rut"          TEXT`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "career"       TEXT`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "entryYear"    INTEGER`,
+  `UPDATE "users"
+   SET "avatarUrl" = '/api/profile/avatar?userId=' || "id"
+   WHERE "avatarUrl" = '/api/profile/avatar'`,
 
   // roles
   `CREATE TABLE IF NOT EXISTS "roles" (

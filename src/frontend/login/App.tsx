@@ -9,6 +9,7 @@ import { Alert } from './components/Alert';
 import { Button } from './components/Button';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { createTutorSession, getSessionToken, hasTutorSession } from '@/frontend/modules/auth/services/session';
+import { getApolloClient } from '@/frontend/lib/apollo-client';
 
 // Tipos para Google Identity Services
 declare global {
@@ -129,10 +130,11 @@ export default function App() {
     setIsLoading(true);
     setShowError(false);
     authenticateWithGoogle({ variables: { idToken: response.credential } })
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         const session = data?.authenticateWithGoogle;
         if (session?.user && session?.token) {
           createTutorSession(session.token);
+          await getApolloClient().clearStore();
           redirectByRoles(session.user.roles);
         }
       })
@@ -152,10 +154,11 @@ export default function App() {
     setShowError(false);
     
     authenticateWithEmail({ variables: { input: { email: devEmail } } })
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         const session = data?.authenticateWithEmail;
         if (session?.user && session?.token) {
           createTutorSession(session.token);
+          await getApolloClient().clearStore();
           redirectByRoles(session.user.roles);
         }
       })
