@@ -142,33 +142,37 @@ Para agregar un campo nuevo, ejemplo un teléfono:
 
 # Flujo de generación automática de Google Forms
 
-## ¿Qué cambió respecto al flujo anterior?
+## Historial del flujo
 
-| Flujo anterior | Flujo nuevo |
+| Versión | Cómo se creaba el form |
 |---|---|
-| Admin crea un Google Form vacío manualmente en forms.google.com | El sistema lo crea automáticamente vía API |
-| Admin copia el ID del form y lo pega en un `window.prompt` | No se requiere ninguna acción manual |
-| El backend recibe el ID y popula el form | El backend crea Y popula el form en un solo paso |
-| No hay confirmación visual | Aparece un modal con opciones de editar / ver |
+| v1 (manual) | Admin creaba el Google Form vacío a mano y pegaba el ID en un `window.prompt` |
+| v2 (service account puro) | El backend intentaba crear el form vía `POST forms.googleapis.com` autenticado solo con service account — **siempre fallaba con 500 opaco**, porque un service account sin domain-wide delegation no tiene Drive propio y `forms.create` requiere un Drive real detrás |
+| **v3 (actual, 01-jul-2026)** | El **admin autoriza con su propia cuenta de Google** (popup OAuth) solo para el paso de creación; el form se crea con Drive real del admin y luego se comparte con el service account para que el resto del pipeline siga automático |
 
 ---
 
-## Arquitectura del flujo
+## Arquitectura del flujo (v3)
 
 ```
 Admin (clic "Generar Form")
         │
-        │  GraphQL mutation: generateGoogleForm(semester)
+        │  1. Popup Google Identity Services (oauth2.initTokenClient)
+        │     scope: forms.body + drive.file
         ▼
 src/frontend/modules/admin-dashboard/AdminTutoriasPage.tsx
+        │  requestGoogleFormsAccessToken(clientId) → access_token del ADMIN
         │
-        │  Apollo useMutation → POST /api/graphql
+        │  2. GraphQL mutation: generateGoogleForm(semester, googleAccessToken)
         ▼
 src/backend/modules/offerings/resolvers/offerings.resolver.ts
-        │  generateGoogleForm(semester?, existingFormId?)
+        │  requirePermission(MANAGE_OFFERINGS) — solo rol ADMIN
         ▼
 src/backend/modules/offerings/service/offerings.service.ts
-  ├── si no hay existingFormId → client.createForm("Tutoría 2026-1")
+  ├── si no hay existingFormId:
+  │     ├── sin googleAccessToken → AuthError("GOOGLE_AUTHORIZATION_REQUIRED", 401)
+  │     ├── createFormWithUserToken(title, token) → crea el form CON el Drive del admin
+  │     └── shareFormWithServiceAccount(formId, token) → comparte el archivo con el service account (writer)
   ├── Fase 1: batchUpdate — preguntas personales + carrera + sección por carrera
   ├── Fase 2: batchUpdate — routing (saltos de sección por carrera)
   └── Fase 3: eliminar ítems iniciales vacíos (solo si el form tenía ítems previos)
@@ -176,8 +180,12 @@ src/backend/modules/offerings/service/offerings.service.ts
         │  returns { formUrl, formEditUrl }
         ▼
 src/backend/modules/offerings/google-forms/forms-client.ts
-  └── ServiceAccountFormsClient — auth JWT con service account de Google
+  ├── createFormWithUserToken / shareFormWithServiceAccount — usan el token del ADMIN (una sola vez, no se persiste)
+  └── ServiceAccountFormsClient — sigue haciendo batchUpdate/get/getResponses con JWT propio,
+      ya que quedó como colaborador ("writer") del archivo de Drive
 ```
+
+**Por qué este diseño y no domain-wide delegation:** domain-wide delegation requeriría acceso de administrador de un Google Workspace real, que no está disponible. El flujo OAuth de usuario funciona con **cualquier cuenta de Google** que el admin use para autorizar (no tiene que ser la cuenta institucional del login de Zableke) — la mutation sigue protegida por el permiso `MANAGE_OFFERINGS` (solo ADMIN).
 
 ---
 
@@ -185,78 +193,63 @@ src/backend/modules/offerings/google-forms/forms-client.ts
 
 ### 1. Admin hace clic en "Generar Form"
 
-`AdminTutoriasPage.tsx` dispara `handleGenerateForm()`:
+`AdminTutoriasPage.tsx` primero pide el `googleClientId` a `/api/config`, luego dispara `requestGoogleFormsAccessToken(clientId)`, que carga Google Identity Services y abre el popup de consentimiento (`prompt: "consent"`) pidiendo los scopes `forms.body` y `drive.file`.
 
 ```ts
-const result = await generateForm({ variables: { semester } });
+const googleAccessToken = await requestGoogleFormsAccessToken(googleClientId);
+const result = await generateForm({ variables: { semester, googleAccessToken } });
 ```
-
-No se pide ningún ID. La mutación GraphQL tiene `existingFormId` como opcional (`String`, no `String!`).
 
 ### 2. El resolver recibe la mutación
 
-`offerings.resolver.ts:255` llama a:
+`offerings.resolver.ts` llama a:
 
 ```ts
-offeringsService.generateGoogleForm(args.semester, args.existingFormId)
+offeringsService.generateGoogleForm(args.semester, args.existingFormId, args.googleAccessToken)
 ```
 
-`args.existingFormId` es `undefined` en este flujo normal.
-
-### 3. El service auto-crea el form
-
-`offerings.service.ts` — lógica clave:
+### 3. El service crea el form con el token del admin y lo comparte
 
 ```ts
 let resolvedFormId = existingFormId?.trim();
 if (!resolvedFormId) {
-  const created = await client.createForm(`Tutoría ${targetSemester}`);
+  if (!googleAccessToken) {
+    throw new AuthError("Se requiere autorización de tu cuenta de Google...", "GOOGLE_AUTHORIZATION_REQUIRED", 401);
+  }
+  const created = await createFormWithUserToken(`Tutoría ${targetSemester}`, googleAccessToken);
   resolvedFormId = created.formId;
+  await shareFormWithServiceAccount(resolvedFormId, googleAccessToken);
 }
 ```
 
-Si no se pasó `existingFormId`, se llama a `createForm()` que hace `POST https://forms.googleapis.com/v1/forms` con auth de service account.
+Si no se pasa `googleAccessToken` al crear un form nuevo, el backend responde con el error tipado `GOOGLE_AUTHORIZATION_REQUIRED` en vez del 500 opaco de la versión anterior.
 
-### 4. El service popula el form en 3 fases
+### 4. El service popula el form en 3 fases (sin cambios respecto a v2)
 
 - **Fase 1**: `batchUpdateForm` — crea preguntas de nombre, RUT, teléfono, email, carrera (dropdown), y secciones por carrera.
 - **Fase 2**: `batchUpdateForm` — configura routing (saltos entre secciones según carrera seleccionada).
-- **Fase 3**: `batchUpdateForm` — elimina los ítems vacíos que Google crea por defecto al crear un form nuevo. Esta fase se omite si `initialItemIds.length === 0` (form auto-creado no tiene ítems previos).
+- **Fase 3**: `batchUpdateForm` — elimina los ítems vacíos que Google crea por defecto. Se omite si el form no tenía ítems previos.
 
-### 5. El service retorna las URLs
+Estas 3 fases siguen usando `ServiceAccountFormsClient`, que ahora puede operar sobre el archivo porque quedó como "writer" (paso 3 de la sección anterior).
 
-```ts
-return { formUrl: resolvedFormUrl, formEditUrl: resolvedFormEditUrl };
-```
+### 5. El service retorna las URLs y el frontend muestra el modal
 
-`formUrl` → URL pública para estudiantes.
-`formEditUrl` → URL de edición en Google Forms (solo accesible con la cuenta del service account o accounts con acceso al form).
+Igual que antes: `formUrl` (vista estudiante) y `formEditUrl` (edición), con el modal de "Editar formulario" / "Ver formulario" / "Cerrar".
 
-### 6. El frontend muestra el modal
+### 6. Sync de respuestas — sin cambios
 
-`AdminTutoriasPage.tsx` recibe las URLs y setea `generatedForm`:
-
-```ts
-setGeneratedForm({ formUrl: urls.formUrl, formEditUrl: urls.formEditUrl });
-```
-
-Esto renderiza el modal con tres acciones:
-
-| Botón | Acción |
-|---|---|
-| "Editar formulario" | Abre `formEditUrl` en nueva pestaña |
-| "Ver formulario (vista estudiante)" | Abre `formUrl` en nueva pestaña |
-| "Cerrar" | `setGeneratedForm(null)` — cierra el modal |
+`syncGoogleFormResponses` sigue usando `ServiceAccountFormsClient` sin necesitar un nuevo token del admin — el service account conserva el acceso compartido de forma persistente.
 
 ---
 
-## Autenticación con Google
+## Autenticación con Google (v3)
 
-El cliente `ServiceAccountFormsClient` (`forms-client.ts`) usa un **service account de Google** autenticado vía JWT:
+Dos identidades distintas entran en juego:
 
-- Las credenciales viven en variables de entorno (o en un archivo JSON referenciado por `GOOGLE_APPLICATION_CREDENTIALS`).
-- El scope requerido es `https://www.googleapis.com/auth/forms.body`.
-- No requiere interacción del usuario — es server-to-server.
+- **Token del admin** (`createFormWithUserToken`, `shareFormWithServiceAccount` en `forms-client.ts`): OAuth2 implícito vía Google Identity Services, scope `forms.body` + `drive.file`, **no se persiste** — vive solo en memoria del navegador durante la generación.
+- **Service account** (`ServiceAccountFormsClient`): JWT server-to-server como antes, usado para todo lo demás (batchUpdate, get, sync de respuestas) una vez que tiene acceso compartido al archivo.
+
+**Requisito de Google Cloud Console:** mientras el proyecto OAuth esté en modo *Testing* (no verificado por Google), solo las cuentas agregadas explícitamente en **APIs & Services → OAuth consent screen → Test users** pueden completar el popup de consentimiento — cualquier otra cuenta recibe `Error 403: access_denied`. Agregar ahí cada cuenta admin que vaya a generar formularios.
 
 ---
 
@@ -264,7 +257,8 @@ El cliente `ServiceAccountFormsClient` (`forms-client.ts`) usa un **service acco
 
 | Archivo | Rol |
 |---|---|
-| [src/backend/modules/offerings/google-forms/forms-client.ts](src/backend/modules/offerings/google-forms/forms-client.ts) | Singleton que expone `createForm`, `batchUpdateForm`, `getForm`, `getResponses` |
-| [src/backend/modules/offerings/service/offerings.service.ts](src/backend/modules/offerings/service/offerings.service.ts) | Orquesta las 3 fases de construcción del form; auto-crea si no hay `existingFormId` |
-| [src/backend/modules/offerings/resolvers/offerings.resolver.ts](src/backend/modules/offerings/resolvers/offerings.resolver.ts) | GraphQL schema y resolver — `existingFormId` es opcional (`String`) |
-| [src/frontend/modules/admin-dashboard/AdminTutoriasPage.tsx](src/frontend/modules/admin-dashboard/AdminTutoriasPage.tsx) | Botón "Generar Form", mutation `GENERATE_FORM`, modal post-generación |
+| [src/backend/modules/offerings/google-forms/forms-client.ts](src/backend/modules/offerings/google-forms/forms-client.ts) | `createFormWithUserToken` + `shareFormWithServiceAccount` (token del admin) y `ServiceAccountFormsClient` (`batchUpdateForm`, `getForm`, `getResponses`, JWT propio) |
+| [src/backend/modules/offerings/service/offerings.service.ts](src/backend/modules/offerings/service/offerings.service.ts) | Orquesta creación con token del admin + reparto al service account + las 3 fases de construcción del form |
+| [src/backend/modules/offerings/resolvers/offerings.resolver.ts](src/backend/modules/offerings/resolvers/offerings.resolver.ts) | GraphQL schema y resolver — `generateGoogleForm(semester, existingFormId, googleAccessToken)`, `existingFormId` y `googleAccessToken` opcionales |
+| [src/frontend/modules/admin-dashboard/AdminTutoriasPage.tsx](src/frontend/modules/admin-dashboard/AdminTutoriasPage.tsx) | Botón "Generar Form", popup OAuth (`requestGoogleFormsAccessToken`), mutation `GENERATE_FORM`, modal post-generación |
+| [src/backend/common/errors/auth.error.ts](src/backend/common/errors/auth.error.ts) | Código de error `GOOGLE_AUTHORIZATION_REQUIRED` |

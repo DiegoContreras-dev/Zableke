@@ -15,7 +15,7 @@ zableke/
 │   │   │       └── route.ts        # Apollo Server endpoint
 │   │   └── layout.tsx
 │   │
-│   ├── front/                      # Todo el avance del frontend
+│   ├── frontend/                   # Todo el avance del frontend
 │   │   ├── components/
 │   │   │   ├── ui/
 │   │   │   └── shared/
@@ -61,11 +61,11 @@ zableke/
 - Cada modulo sigue capas internas: `resolvers -> service -> repository -> model`.
 - `src/graphql/context.ts` y `src/infrastructure/prisma` son piezas activas del backend runtime.
 
-## Reglas del Frontend (src/front/modules/)
+## Reglas del Frontend (src/frontend/modules/)
 
 - Cada módulo incluye: `components/`, `hooks/`, `services/`, `types/`.
 - Los services del frontend usan Apollo Client para queries/mutations.
-- Validación de formularios con Zod + React Hook Form.
+- Validación de formularios manual (`useState` + validadores propios). Zod + React Hook Form siguen planificados, no adoptados.
 
 ## Regla BD (prisma/)
 
@@ -95,12 +95,14 @@ zableke/
 
 - Un módulo por dominio de negocio, no por tipo técnico.
 - Evitar dependencias cruzadas entre módulos.
-- Compartidos frontend en `src/front/components/shared` o `src/front/lib`.
+- Compartidos frontend en `src/frontend/components/shared` o `src/frontend/lib`.
 - Toda nueva feature de backend debe incluir test unitario o de integracion.
 - El archivo `.env` se mantiene en raíz y no dentro de subcarpetas.
 
 ## Estado funcional actual
 
-- Epica 2 backend: implementada (auth institucional).
+- Epica 2 backend: implementada (auth institucional + Google).
 - Epica 3 backend: implementada (RBAC y gestion de roles).
-- Epica 4: pendiente (horarios y prevencion de conflictos).
+- Epica 4: implementada (ofertas de tutoria, horarios, inscripciones, generacion de Google Form, asistencia).
+- Auditoria (`audit_logs`): implementada de forma best-effort sobre Offering/Enrollment/Schedule.
+- Notificaciones (`notifications`): pendiente, sin implementar.

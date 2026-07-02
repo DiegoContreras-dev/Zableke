@@ -27,12 +27,12 @@ Pasar de arquitectura definida a MVP funcional y desplegable en VM, alineado a l
 3. Servicios y repositorios implementados para Auth y Roles.
 
 ## Fase 2 - MVP funcional
-1. Autenticacion institucional (dominios ucn). [backend completado]
-2. RBAC Admin/Tutor en backend y vistas. [backend completado]
-3. CRUD de horarios con bloqueo de conflictos. [pendiente]
-4. Asistencia digital por sesion.
-5. Notificaciones automaticas por cambios.
-6. Auditoria inmutable de operaciones criticas.
+1. Autenticacion institucional (dominios ucn) + Google. [completado]
+2. RBAC Admin/Tutor en backend y vistas. [completado]
+3. CRUD de ofertas de tutoria y horarios (slots) con Google Form para inscripciones. [completado]
+4. Asistencia digital por sesion. [completado]
+5. Notificaciones automaticas por cambios. [pendiente, sin implementar]
+6. Auditoria de operaciones criticas (best-effort, no inmutable). [completado]
 
 ## Fase 3 - Calidad y despliegue
 1. Pruebas unitarias e integracion del flujo principal.
@@ -59,7 +59,6 @@ Pasar de arquitectura definida a MVP funcional y desplegable en VM, alineado a l
 6. App desplegada por Docker y funcional en VM.
 
 ## Proximo bloque de implementacion
-1. Implementar modulo `schedules` en backend (CRUD + validacion de solape).
-2. Exponer schema/resolvers GraphQL de `schedules`.
-3. Agregar pruebas de integracion de conflictos por tutor y sala.
-4. Integrar auditoria de operaciones criticas en roles y schedules.
+1. Implementar modulo `notifications` (unico modulo core sin implementar; hoy solo tiene estructura de carpetas vacia).
+2. Resolver el bloqueo de Google Cloud Console (OAuth consent screen en modo Testing) para que la generacion de Google Form funcione con cualquier cuenta admin — ver `ARREGLOS_PENDIENTES.md` punto 4 y `FLUJOFORM.md`.
+3. Definir mutation de cambio de contraseña para tutores (hoy se crean con password fijo).
