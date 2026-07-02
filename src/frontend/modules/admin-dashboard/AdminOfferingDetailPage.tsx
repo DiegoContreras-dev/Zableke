@@ -27,6 +27,7 @@ const OFFERING_DETAIL = gql`
         endTime
         maxCapacity
         enrolledCount
+        tutorActive
       }
     }
     tutorOptions {
@@ -124,6 +125,7 @@ interface Slot {
   endTime: string;
   maxCapacity: number;
   enrolledCount: number;
+  tutorActive: boolean;
 }
 
 interface Offering {
@@ -496,9 +498,14 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
                     {offering.slots.map((slot) => {
                       const isSelected = selectedSlotId === slot.id;
                       return (
-                        <tr key={slot.id} className={`${isSelected ? "bg-sky-50 border-l-4 border-l-sky-500" : "hover:bg-slate-50/70 border-l-4 border-l-transparent"}`}>
+                        <tr key={slot.id} className={`${isSelected ? "bg-sky-50 border-l-4 border-l-sky-500" : "hover:bg-slate-50/70 border-l-4 border-l-transparent"} ${!slot.tutorActive ? "bg-rose-50/40" : ""}`}>
                           <td className="px-4 py-3 font-medium text-slate-900">
                             {dayLabel[slot.dayOfWeek] ?? slot.dayOfWeek} · {labelForBlock(slot.startTime, slot.endTime)}
+                            {!slot.tutorActive && (
+                              <span className="mt-1 block w-fit rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                                Inactiva — sin tutor
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-slate-600">
                             {slot.tutorName}

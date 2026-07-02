@@ -47,7 +47,7 @@ function makeRepoMock(overrides: Record<string, unknown> = {}) {
       maxCapacity: 10,
       roomName: null,
       googleFormOptionLabel: null,
-      tutor: { userId: "user-1", user: { firstName: "Ana", lastName: "García", email: "ana@ucn.cl" } },
+      tutor: { userId: "user-1", isActive: true, user: { firstName: "Ana", lastName: "García", email: "ana@ucn.cl" } },
       _count: { enrollments: 0 },
     }),
     deleteEnrollment: async () => undefined,

@@ -25,6 +25,8 @@ export interface SlotView {
   endTime: string;
   maxCapacity: number;
   enrolledCount: number;
+  adminGrade: number | null;
+  tutorActive: boolean;
 }
 
 export interface OfferingView {

@@ -52,6 +52,8 @@ function toSlotView(slot: SlotRecord): SlotView {
     endTime: slot.endTime,
     maxCapacity: slot.maxCapacity,
     enrolledCount: slot._count.enrollments,
+    adminGrade: slot.adminGrade,
+    tutorActive: slot.tutor.isActive,
   };
 }
 
@@ -69,6 +71,8 @@ function offeringSlotToView(offering: OfferingRecord, slot: OfferingRecord["slot
     endTime: slot.endTime,
     maxCapacity: slot.maxCapacity,
     enrolledCount: slot._count.enrollments,
+    adminGrade: slot.adminGrade,
+    tutorActive: slot.tutor.isActive,
   };
 }
 
@@ -661,6 +665,9 @@ export class OfferingsService {
     if (!slot) throw new AuthError("Slot not found", "RESOURCE_NOT_FOUND", 404);
     if (slot.offering.status !== "OPEN") {
       throw new AuthError("Offering is closed", "INVALID_STATE", 400);
+    }
+    if (!slot.tutor.isActive) {
+      throw new AuthError("Slot's tutor is inactive", "INVALID_STATE", 400);
     }
 
     const enrolledCount = await this.repo.countEnrollmentsBySlot(slot.id);

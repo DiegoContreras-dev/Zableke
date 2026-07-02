@@ -18,8 +18,9 @@ function makeSlotRecord(overrides: Record<string, unknown> = {}) {
     maxCapacity: 30,
     roomName: "207",
     googleFormOptionLabel: null,
+    adminGrade: null,
     offering: { id: "offering-1", name: "Cálculo I", status: "OPEN", semester: "2026-1" },
-    tutor: { user: { firstName: "Ana", lastName: "García", email: "ana@ucn.cl" } },
+    tutor: { isActive: true, user: { firstName: "Ana", lastName: "García", email: "ana@ucn.cl" } },
     _count: { enrollments: 5 },
     ...overrides,
   };

@@ -994,10 +994,10 @@ export function AdminTutoresPage() {
         {tab === "desempeno" && (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs text-slate-500">
-              <span className="font-semibold text-slate-600">Nota = % ocupación → escala 1–7:</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> 6–7 Cumple (≥83% ocupación)</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> 4–5 Regular (50–83%)</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> 1–3 Revisar (&lt;50%)</span>
+              <span className="font-semibold text-slate-600">Nota = promedio de tutorías calificadas:</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> 6–7 Cumple</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> 4–5 Regular</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> 1–3 Revisar</span>
               <span className="ml-auto italic text-slate-400">Haz clic en un tutor para ver detalle</span>
             </div>
             {loading ? (

@@ -20,6 +20,7 @@ const MY_TUTORING_SLOTS = gql`
       endTime
       enrolledCount
       maxCapacity
+      adminGrade
     }
   }
 `;
@@ -33,6 +34,7 @@ interface TutoringSlotItem {
   endTime: string;
   enrolledCount: number;
   maxCapacity: number;
+  adminGrade: number | null;
 }
 
 const dayByIndex = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
@@ -99,12 +101,10 @@ export function TutorHomePage() {
 
   const grade = useMemo(() => {
     const slots = data?.myTutoringSlots ?? [];
-    if (!slots.length) return 0;
-    const totalEnrolled = slots.reduce((s, sl) => s + sl.enrolledCount, 0);
-    const totalCapacity = slots.reduce((s, sl) => s + sl.maxCapacity, 0);
-    if (!totalCapacity) return 0;
-    const fillRate = totalEnrolled / totalCapacity;
-    return Math.max(1.0, Math.min(7.0, Math.round((fillRate * 6 + 1) * 10) / 10));
+    const gradedSlots = slots.filter((sl) => sl.adminGrade !== null);
+    if (!gradedSlots.length) return 0;
+    const sum = gradedSlots.reduce((s, sl) => s + (sl.adminGrade as number), 0);
+    return Math.round((sum / gradedSlots.length) * 10) / 10;
   }, [data]);
 
   return (
@@ -209,7 +209,7 @@ export function TutorHomePage() {
                 </span>
                 <span className="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">Desempeño semestral</span>
                 <span className="text-[11px] text-slate-400 mt-0.5">
-                  {grade === 0 ? "Sin datos aún" : grade >= 6 ? "Cumple" : grade >= 4 ? "Regular" : "Revisar ocupación"}
+                  {grade === 0 ? "Sin nota asignada aún" : grade >= 6 ? "Cumple" : grade >= 4 ? "Regular" : "Revisar"}
                 </span>
               </div>
             </div>

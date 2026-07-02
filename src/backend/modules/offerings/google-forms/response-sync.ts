@@ -42,7 +42,7 @@ export async function syncResponses(params: {
   }
 
   const offerings = await repo.findOfferingsBySemester(params.semester);
-  const slotByLabel = new Map<string, { id: string; offeringId: string; maxCapacity: number }>();
+  const slotByLabel = new Map<string, { id: string; offeringId: string; maxCapacity: number; tutorActive: boolean }>();
   offerings.forEach((offering) => {
     offering.slots.forEach((slot) => {
       if (slot.googleFormOptionLabel) {
@@ -50,6 +50,7 @@ export async function syncResponses(params: {
           id: slot.id,
           offeringId: offering.id,
           maxCapacity: slot.maxCapacity,
+          tutorActive: slot.tutor.isActive,
         });
       }
     });
@@ -138,6 +139,12 @@ export async function syncResponses(params: {
         console.log(`[sync] Response ${responseId}: no slot match for label "${slotLabel}"`);
         console.log(`[sync] Available labels: ${[...slotByLabel.keys()].join(" | ")}`);
         errors.push(`Respuesta ${responseId}: etiqueta de horario no encontrada: "${slotLabel}"`);
+        continue;
+      }
+
+      if (!slot.tutorActive) {
+        errors.push(`Respuesta ${responseId}: la tutoría "${slotLabel}" no tiene tutor activo, no se puede inscribir`);
+        skipped += 1;
         continue;
       }
 

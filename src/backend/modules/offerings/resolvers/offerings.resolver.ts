@@ -32,6 +32,8 @@ export const offeringsTypeDefs = `
     endTime: String!
     maxCapacity: Int!
     enrolledCount: Int!
+    adminGrade: Float
+    tutorActive: Boolean!
   }
 
   type EnrollmentRecord {
