@@ -23,6 +23,7 @@ import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { DashboardPanel } from "@/frontend/modules/tutor-dashboard/components/DashboardPanel";
 import { StudentAttendanceItem } from "@/frontend/modules/tutor-dashboard/components/StudentAttendanceItem";
+import { profileAvatarSrc } from "@/frontend/lib/profile-avatar";
 import type { StudentAttendance } from "@/frontend/modules/tutor-dashboard/data";
 
 // ─── GraphQL ─────────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ function TutorGrid({
             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#23415B]/10 text-sm font-bold text-[#23415B]">
               {tutor.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={tutor.avatarUrl} alt={tutor.name} className="h-full w-full object-cover" />
+                <img src={profileAvatarSrc(tutor.avatarUrl, tutor.userId) ?? undefined} alt={tutor.name} className="h-full w-full object-cover" />
               ) : (
                 initials(tutor.name)
               )}
@@ -304,8 +305,10 @@ function SlotsList({
           Volver a tutores
         </button>
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#23415B]/10 text-lg font-bold text-[#23415B]">
-            {initials(tutor.name)}
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#23415B]/10 text-lg font-bold text-[#23415B]">
+            {tutor.avatarUrl ? (
+              <img src={profileAvatarSrc(tutor.avatarUrl, tutor.userId) ?? undefined} alt={tutor.name} className="h-full w-full object-cover" />
+            ) : initials(tutor.name)}
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">{tutor.name}</h2>

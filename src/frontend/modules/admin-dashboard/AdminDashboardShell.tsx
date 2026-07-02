@@ -27,6 +27,8 @@ import {
 } from "@/frontend/modules/auth/services/session";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { profileAvatarSrc } from "@/frontend/lib/profile-avatar";
+import { getApolloClient } from "@/frontend/lib/apollo-client";
 
 const ADMIN_SHELL_ME = gql`
   query AdminShellMe {
@@ -78,7 +80,7 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
       lastName: string;
       avatarUrl: string | null;
     };
-  }>(ADMIN_SHELL_ME, { fetchPolicy: "cache-and-network" });
+  }>(ADMIN_SHELL_ME, { fetchPolicy: "network-only" });
   const me = meData?.me;
   const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(" ") || "Administrador";
   const initials = [me?.firstName, me?.lastName]
@@ -86,7 +88,7 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
     .map((part) => part?.[0])
     .join("")
     .toUpperCase() || "A";
-  const avatarUrl = me?.avatarUrl ? `${me.avatarUrl}?v=${avatarVersion}` : null;
+  const avatarUrl = profileAvatarSrc(me?.avatarUrl, me?.id, avatarVersion);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -141,6 +143,7 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
 
   const handleLogout = () => {
     clearTutorSession();
+    void getApolloClient().clearStore();
     setHasActiveSession(false);
     setIsProfileDropdownOpen(false);
     setIsMobileMenuOpen(false);

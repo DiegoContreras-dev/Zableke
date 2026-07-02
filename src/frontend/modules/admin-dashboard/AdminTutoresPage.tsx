@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
+import { profileAvatarSrc } from "@/frontend/lib/profile-avatar";
 
 type TutorDriveFolder = {
   semester: string;
@@ -307,7 +308,7 @@ function TutorAvatar({ user, name, size = "lg" }: {
   if (user?.avatarUrl && !failed) {
     return (
       <img
-        src={`/api/profile/avatar?userId=${encodeURIComponent(user.id)}`}
+        src={profileAvatarSrc(user.avatarUrl, user.id) ?? undefined}
         alt={`Foto de ${name}`}
         onError={() => setFailed(true)}
         className={`${sizeClass} shrink-0 rounded-full border border-slate-200 object-cover`}
