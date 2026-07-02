@@ -241,7 +241,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
   const [removeEnrollment] = useMutation(REMOVE_ENROLLMENT, {
     refetchQueries: refetchDetail,
   });
-  const [syncForm, { loading: syncing }] = useMutation(SYNC_FORM, { refetchQueries: refetchDetail });
+  const [syncForm] = useMutation(SYNC_FORM, { refetchQueries: refetchDetail });
 
   const handleRemoveEnrollment = async (enrollmentId: string) => {
     if (!window.confirm("¿Estás seguro de que deseas eliminar este estudiante del paralelo? Esta acción no se puede deshacer.")) return;
@@ -393,13 +393,6 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
         (err instanceof Error ? err.message : null);
       setEnrollmentError(gqlMsg ?? "No fue posible inscribir al estudiante.");
     }
-  };
-
-  const handleSyncForm = async () => {
-    if (!offering) return;
-    const result = await syncForm({ variables: { semester: offering.semester } });
-    const sync = (result.data as { syncFormResponses?: { newEnrollments: number; skipped: number } } | undefined)?.syncFormResponses;
-    setMessage(sync ? `Sync listo: ${sync.newEnrollments} nuevas, ${sync.skipped} omitidas.` : "Sincronización lista.");
   };
 
   const handleDeleteOffering = async () => {
@@ -617,7 +610,7 @@ export function AdminOfferingDetailPage({ offeringId }: { offeringId: string }) 
               <UserPlus className="h-6 w-6" />
             </div>
             <p className="text-sm font-medium text-slate-600">No has seleccionado ningún paralelo</p>
-            <p className="text-xs text-slate-500 mt-1">Haz clic en el botón "Ver Inscritos" de la tabla superior para visualizar la lista.</p>
+            <p className="text-xs text-slate-500 mt-1">Haz clic en el botón &ldquo;Ver Inscritos&rdquo; de la tabla superior para visualizar la lista.</p>
           </div>
         ) : enrollments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50/50">

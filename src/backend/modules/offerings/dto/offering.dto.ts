@@ -223,7 +223,7 @@ export function parseCreateEnrollmentInput(raw: unknown): CreateEnrollmentInput 
 
   let finalRut = typeof obj.studentRut === "string" ? obj.studentRut.trim() || undefined : undefined;
   if (finalRut) {
-    let cleanRut = finalRut.replace(/[^0-9kK]/g, '').toUpperCase();
+    const cleanRut = finalRut.replace(/[^0-9kK]/g, '').toUpperCase();
     if (cleanRut.length >= 2) {
       const dv = cleanRut.slice(-1);
       const numberStr = cleanRut.slice(0, -1);

@@ -7,7 +7,6 @@ import {
   parseDateOnly,
   parseUpdateOfferingInput,
   type CreateEnrollmentInput,
-  type UpdateSlotInput,
 } from "@/backend/modules/offerings/dto/offering.dto";
 import type {
   EnrollmentView,
