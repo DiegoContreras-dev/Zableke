@@ -19,6 +19,7 @@ export const attendanceTypeDefs = `
   type AttendanceHistoryItem {
     id: ID!
     scheduleId: String!
+    semester: String!
     scheduleTitle: String!
     scheduleDescription: String
     scheduleStartsAt: String!
@@ -47,7 +48,7 @@ export const attendanceTypeDefs = `
 
   extend type Query {
     attendancesBySchedule(scheduleId: ID!): [AttendanceRecord!]!
-    myAttendanceHistory: [AttendanceHistoryItem!]!
+    myAttendanceHistory(semesters: [String!]): [AttendanceHistoryItem!]!
   }
 
   extend type Mutation {
@@ -68,11 +69,11 @@ export const attendanceResolvers = {
 
     myAttendanceHistory: async (
       _: unknown,
-      __: unknown,
+      args: { semesters?: string[] },
       context: GraphQLContext
     ) => {
       const user = requireUser(context.currentUser);
-      return attendanceService.getMyAttendanceHistory(user.id);
+      return attendanceService.getMyAttendanceHistory(user.id, args.semesters);
     },
   },
   Mutation: {

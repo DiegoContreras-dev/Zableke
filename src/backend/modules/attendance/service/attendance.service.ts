@@ -17,6 +17,7 @@ export interface AttendanceView {
 }
 
 export interface AttendanceHistoryItem extends AttendanceView {
+  semester: string;
   scheduleTitle: string;
   scheduleDescription: string | null;
   scheduleStartsAt: string;
@@ -127,11 +128,32 @@ export class AttendanceService {
     return records.map(toView);
   }
 
-  async getMyAttendanceHistory(userId: string): Promise<AttendanceHistoryItem[]> {
-    const records = await this.repo.findByMarker(userId);
+  async getMyAttendanceHistory(
+    userId: string,
+    semesters?: string[],
+  ): Promise<AttendanceHistoryItem[]> {
+    if (semesters?.length === 0) return [];
+
+    const normalizedSemesters = semesters?.map((semester) => semester.trim());
+    if (normalizedSemesters?.some((semester) => !/^\d{4}-[12]$/.test(semester))) {
+      throw new AuthError(
+        "Los semestres deben usar el formato YYYY-1 o YYYY-2",
+        "INVALID_INPUT",
+        400,
+      );
+    }
+
+    const records = await this.repo.findByTutor(
+      userId,
+      normalizedSemesters ? [...new Set(normalizedSemesters)] : undefined,
+    );
     return records.map((r) => ({
       id: r.id,
       scheduleId: r.scheduleId,
+      semester:
+        r.schedule.tutoringSlot?.offering.semester ??
+        r.schedule.description ??
+        "Sin semestre",
       scheduleTitle: r.schedule.title,
       scheduleDescription: r.schedule.description ?? null,
       scheduleStartsAt: r.schedule.startsAt.toISOString(),

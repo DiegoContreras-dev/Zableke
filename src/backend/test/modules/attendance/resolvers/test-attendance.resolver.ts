@@ -18,6 +18,7 @@ test("attendanceTypeDefs define el tipo AttendanceRecord", () => {
 
 test("attendanceTypeDefs define el tipo AttendanceHistoryItem", () => {
   assert.ok(attendanceTypeDefs.includes("type AttendanceHistoryItem"));
+  assert.ok(attendanceTypeDefs.includes("semester: String!"));
   assert.ok(attendanceTypeDefs.includes("scheduleTitle: String!"));
   assert.ok(attendanceTypeDefs.includes("scheduleStartsAt: String!"));
   assert.ok(attendanceTypeDefs.includes("roomName: String"));
@@ -34,6 +35,7 @@ test("attendanceTypeDefs define el query attendancesBySchedule", () => {
 
 test("attendanceTypeDefs define el query myAttendanceHistory", () => {
   assert.ok(attendanceTypeDefs.includes("myAttendanceHistory"));
+  assert.ok(attendanceTypeDefs.includes("semesters: [String!]"));
 });
 
 test("attendanceTypeDefs define input BulkAttendanceInput con scheduleId y attendances", () => {

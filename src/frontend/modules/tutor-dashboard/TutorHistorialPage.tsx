@@ -1,7 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, XCircle, MinusCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  CalendarRange,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  XCircle,
+  MinusCircle,
+} from "lucide-react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { DashboardPanel } from "./components/DashboardPanel";
@@ -9,10 +17,11 @@ import { DashboardPanel } from "./components/DashboardPanel";
 // ─── GraphQL ──────────────────────────────────────────────────────────────────
 
 const MY_ATTENDANCE_HISTORY = gql`
-  query MyAttendanceHistory {
-    myAttendanceHistory {
+  query MyAttendanceHistory($semesters: [String!]) {
+    myAttendanceHistory(semesters: $semesters) {
       id
       scheduleId
+      semester
       scheduleTitle
       scheduleDescription
       scheduleStartsAt
@@ -28,11 +37,21 @@ const MY_ATTENDANCE_HISTORY = gql`
   }
 `;
 
+const HISTORY_SEMESTERS = gql`
+  query TutorHistorySemesters {
+    semesters {
+      code
+      status
+    }
+  }
+`;
+
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface HistoryItem {
   id: string;
   scheduleId: string;
+  semester: string;
   scheduleTitle: string;
   scheduleDescription: string | null;
   scheduleStartsAt: string;
@@ -48,6 +67,7 @@ interface HistoryItem {
 
 interface GroupedSession {
   scheduleId: string;
+  semester: string;
   scheduleTitle: string;
   scheduleDescription: string | null;
   scheduleStartsAt: string;
@@ -109,13 +129,55 @@ function formatSlot(startsAt: string, endsAt: string) {
   return `${date} · ${f(startsAt)} – ${f(endsAt)}`;
 }
 
+function semesterLabel(code: string) {
+  const match = /^(\d{4})-([12])$/.exec(code);
+  return match ? `${match[2]}.º semestre ${match[1]}` : code;
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function TutorHistorialPage() {
-  const { data, loading, error } = useQuery<{ myAttendanceHistory: HistoryItem[] }>(
-    MY_ATTENDANCE_HISTORY,
-    { fetchPolicy: "cache-and-network" }
+  const [selectedSemesters, setSelectedSemesters] = useState<string[]>([]);
+  const initializedSemesters = useRef(false);
+  const {
+    data: semestersData,
+    loading: semestersLoading,
+    error: semestersError,
+  } = useQuery<{
+    semesters: Array<{ code: string; status: string }>;
+  }>(HISTORY_SEMESTERS, { fetchPolicy: "cache-and-network" });
+  const semesterOptions = useMemo(
+    () => semestersData?.semesters ?? [],
+    [semestersData],
   );
+
+  useEffect(() => {
+    if (initializedSemesters.current || semesterOptions.length === 0) return;
+    const active = semesterOptions.find((semester) => semester.status === "ACTIVE");
+    setSelectedSemesters([active?.code ?? semesterOptions[0]!.code]);
+    initializedSemesters.current = true;
+  }, [semesterOptions]);
+
+  const {
+    data,
+    loading: historyLoading,
+    error: historyError,
+  } = useQuery<
+    { myAttendanceHistory: HistoryItem[] },
+    { semesters: string[] }
+  >(
+    MY_ATTENDANCE_HISTORY,
+    {
+      variables: { semesters: selectedSemesters },
+      skip: selectedSemesters.length === 0,
+      fetchPolicy: "cache-and-network",
+    },
+  );
+  const loading =
+    semestersLoading ||
+    (semesterOptions.length > 0 && selectedSemesters.length === 0) ||
+    historyLoading;
+  const error = semestersError ?? historyError;
 
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -127,6 +189,7 @@ export function TutorHistorialPage() {
       if (!map.has(item.scheduleId)) {
         map.set(item.scheduleId, {
           scheduleId: item.scheduleId,
+          semester: item.semester,
           scheduleTitle: item.scheduleTitle,
           scheduleDescription: item.scheduleDescription,
           scheduleStartsAt: item.scheduleStartsAt,
@@ -176,6 +239,26 @@ export function TutorHistorialPage() {
     });
   };
 
+  const toggleSemester = (code: string) => {
+    setSelectedSemesters((current) => {
+      if (current.includes(code)) {
+        return current.length === 1
+          ? current
+          : current.filter((semester) => semester !== code);
+      }
+      return semesterOptions
+        .map((semester) => semester.code)
+        .filter((semester) => current.includes(semester) || semester === code);
+    });
+  };
+
+  const semesterSelectionLabel =
+    selectedSemesters.length === semesterOptions.length && semesterOptions.length > 1
+      ? "Todos los semestres"
+      : selectedSemesters.length === 1
+        ? semesterLabel(selectedSemesters[0]!)
+        : `${selectedSemesters.length} semestres`;
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       {/* Header */}
@@ -183,9 +266,58 @@ export function TutorHistorialPage() {
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 lg:text-3xl">
           Historial de asistencias
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Registro completo de todas las asistencias marcadas en tus sesiones.
-        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Asistencias y métricas de los semestres seleccionados.
+          </p>
+
+          {semesterOptions.length > 0 && (
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-[#23415B]/50 [&::-webkit-details-marker]:hidden">
+                <CalendarRange className="size-4 text-[#23415B]" />
+                {semesterSelectionLabel}
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="absolute right-0 z-20 mt-2 w-72 rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedSemesters(semesterOptions.map((semester) => semester.code))
+                  }
+                  className="mb-1 w-full rounded-md px-3 py-2 text-left text-sm font-medium text-[#23415B] hover:bg-slate-50"
+                >
+                  Seleccionar todos
+                </button>
+                <div className="border-t border-slate-100 pt-1">
+                  {semesterOptions.map((semester) => (
+                    <label
+                      key={semester.code}
+                      className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSemesters.includes(semester.code)}
+                        onChange={() => toggleSemester(semester.code)}
+                        className="size-4 accent-[#23415B]"
+                      />
+                      <span className="flex-1 text-slate-700">
+                        {semesterLabel(semester.code)}
+                      </span>
+                      {semester.status === "ACTIVE" && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                          Activo
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 px-3 pb-1 text-xs text-slate-400">
+                  Debe quedar al menos uno seleccionado.
+                </p>
+              </div>
+            </details>
+          )}
+        </div>
       </header>
 
       {/* KPIs */}
@@ -298,6 +430,9 @@ export function TutorHistorialPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-slate-900">
                         {session.scheduleTitle}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {semesterLabel(session.semester)}
                       </span>
                       {session.scheduleDescription && (
                         <span className="text-sm text-slate-500">

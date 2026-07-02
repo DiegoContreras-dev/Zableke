@@ -13,6 +13,9 @@ export interface AttendanceWithSchedule extends AttendanceRecord {
     status: string;
     room: { name: string } | null;
     roomName: string | null;
+    tutoringSlot: {
+      offering: { semester: string };
+    } | null;
   };
 }
 
@@ -66,9 +69,31 @@ export class AttendanceRepository {
     });
   }
 
-  async findByMarker(markedById: string): Promise<AttendanceWithSchedule[]> {
+  async findByTutor(
+    userId: string,
+    semesters?: string[],
+  ): Promise<AttendanceWithSchedule[]> {
     const rows = await prisma.attendance.findMany({
-      where: { markedById },
+      where: {
+        schedule: {
+          tutor: { userId },
+          ...(semesters
+            ? {
+                OR: [
+                  {
+                    tutoringSlot: {
+                      offering: { semester: { in: semesters } },
+                    },
+                  },
+                  {
+                    tutoringSlot: null,
+                    description: { in: semesters },
+                  },
+                ],
+              }
+            : {}),
+        },
+      },
       include: {
         schedule: {
           select: {
@@ -80,6 +105,11 @@ export class AttendanceRepository {
             status: true,
             roomName: true,
             room: { select: { name: true } },
+            tutoringSlot: {
+              select: {
+                offering: { select: { semester: true } },
+              },
+            },
           },
         },
       },

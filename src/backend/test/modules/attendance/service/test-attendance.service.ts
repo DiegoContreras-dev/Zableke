@@ -36,6 +36,9 @@ function makeScheduleRecord(overrides: Record<string, unknown> = {}) {
       endsAt: new Date("2026-04-15T10:30:00Z"),
       status: "ACTIVE",
       room: { name: "Lab 207" },
+      tutoringSlot: {
+        offering: { semester: "2026-1" },
+      },
     },
     ...overrides,
   };
@@ -47,7 +50,7 @@ function makeRepoMock(overrides: Record<string, unknown> = {}) {
     upsert: async (input: Record<string, unknown>) =>
       makeRecord({ studentEmail: input["studentEmail"], status: input["status"] }),
     findBySchedule: async () => [makeRecord()],
-    findByMarker: async () => [makeScheduleRecord()],
+    findByTutor: async () => [makeScheduleRecord()],
     ...overrides,
   };
 }
@@ -236,6 +239,7 @@ test("AttendanceService.getMyAttendanceHistory retorna AttendanceHistoryItem[]",
 
   assert.equal(result.length, 1);
   assert.equal(result[0]?.scheduleTitle, "Cálculo I");
+  assert.equal(result[0]?.semester, "2026-1");
   assert.equal(result[0]?.roomName, "Lab 207");
   assert.match(result[0]!.scheduleStartsAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(result[0]!.scheduleEndsAt, /^\d{4}-\d{2}-\d{2}T/);
@@ -243,7 +247,7 @@ test("AttendanceService.getMyAttendanceHistory retorna AttendanceHistoryItem[]",
 
 test("AttendanceService.getMyAttendanceHistory incluye scheduleDescription nulo si no existe", async () => {
   const repoMock = makeRepoMock({
-    findByMarker: async () => [
+    findByTutor: async () => [
       makeScheduleRecord({
         schedule: {
           id: "sch-2",
@@ -267,10 +271,37 @@ test("AttendanceService.getMyAttendanceHistory incluye scheduleDescription nulo 
 });
 
 test("AttendanceService.getMyAttendanceHistory retorna vacío si el tutor no ha marcado asistencias", async () => {
-  const repoMock = makeRepoMock({ findByMarker: async () => [] });
+  const repoMock = makeRepoMock({ findByTutor: async () => [] });
   const service = new AttendanceService(repoMock as never);
 
   const result = await service.getMyAttendanceHistory("user-sin-asistencias");
 
   assert.deepEqual(result, []);
+});
+
+test("AttendanceService.getMyAttendanceHistory filtra por los semestres seleccionados", async () => {
+  let receivedUserId = "";
+  let receivedSemesters: string[] | undefined;
+  const repoMock = makeRepoMock({
+    findByTutor: async (userId: string, semesters?: string[]) => {
+      receivedUserId = userId;
+      receivedSemesters = semesters;
+      return [makeScheduleRecord()];
+    },
+  });
+  const service = new AttendanceService(repoMock as never);
+
+  await service.getMyAttendanceHistory("user-1", ["2026-1", "2026-2", "2026-1"]);
+
+  assert.equal(receivedUserId, "user-1");
+  assert.deepEqual(receivedSemesters, ["2026-1", "2026-2"]);
+});
+
+test("AttendanceService.getMyAttendanceHistory rechaza un semestre inválido", async () => {
+  const service = new AttendanceService(makeRepoMock() as never);
+
+  await assert.rejects(
+    () => service.getMyAttendanceHistory("user-1", ["primer semestre"]),
+    (err) => err instanceof AuthError && err.code === "INVALID_INPUT",
+  );
 });
